@@ -8,5 +8,7 @@ namespace Backend.Models
     public required int DefaultDuration { get; set; }
 
     public string? Description { get; set; }
+
+    public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
   }
 }

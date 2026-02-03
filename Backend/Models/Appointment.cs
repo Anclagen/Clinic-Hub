@@ -12,6 +12,7 @@ namespace Backend.Models
     public required Doctor Doctor { get; set; }
     public int CategoryId { get; set; }
     public required Category Category { get; set; }
-    public int Duration { get; set; }
+    public int DurationMinutes { get; set; }
+    public DateTime StartAt { get; set; }
   }
 }

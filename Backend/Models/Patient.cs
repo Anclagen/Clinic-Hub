@@ -17,5 +17,7 @@ namespace Backend.Models
     public string? MedicalInsuranceMemberNumber { get; set; }
     public string? TaxNumber { get; set; }
     public string? SocialSecurityNumber { get; set; }
+    public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+
   }
 }
