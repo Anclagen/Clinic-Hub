@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Backend.Models;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Backend.Data
 {
@@ -19,6 +20,15 @@ namespace Backend.Data
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
       base.OnModelCreating(modelBuilder);
+      var dateOnlyConverter = new ValueConverter<DateOnly, DateTime>(
+       d => d.ToDateTime(TimeOnly.MinValue),
+       d => DateOnly.FromDateTime(d)
+     );
+
+      modelBuilder.Entity<Patient>()
+        .Property(p => p.DateOfBirth)
+        .HasColumnType("date")
+        .HasConversion(dateOnlyConverter);
 
       modelBuilder.Entity<Patient>()
         .HasIndex(p => p.Email)
