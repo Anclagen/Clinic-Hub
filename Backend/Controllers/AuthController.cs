@@ -41,6 +41,7 @@ namespace Backend.Controllers
       return Ok(new LoginResponseDto
       {
         Token = token,
+        Id = user.Id,
         Email = user.Email,
         Firstname = user.Firstname,
         Lastname = user.Lastname,
