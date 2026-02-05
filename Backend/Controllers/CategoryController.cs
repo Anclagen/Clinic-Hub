@@ -23,18 +23,11 @@ namespace Backend.Controllers
     /// Retrieves all categories.
     /// </summary>
     /// <returns>A list of categories</returns>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
     /// <response code="500">Something went wrong server side.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<CategoryResponseDTO>), 200)]
-
     public async Task<ActionResult<IEnumerable<CategoryResponseDTO>>> GetCategories()
     {
-      if (_dataContext.Categories == null)
-      {
-        return NotFound();
-      }
-
       var categories = await _dataContext.Categories
           .Select(t => new CategoryResponseDTO
           {
@@ -45,27 +38,22 @@ namespace Backend.Controllers
           })
           .ToListAsync();
 
-      return categories;
+      return Ok(categories);
     }
+
     /// <summary>
     /// Retrieves a category by ID.
     /// </summary>
     /// <param name="Id">The category ID.</param>
     /// <response code="200">Returns the category</response>
     /// <response code="404">If the category is not found</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
     /// <response code="500">Something went wrong server side.</response>
-    //GET api/Categories/{id}
     [HttpGet("{Id}")]
     [ProducesResponseType(typeof(CategoryResponseDTO), 200)]
-    [ProducesResponseType(typeof(ApiNotFoundErrorDTO), 404)]
+    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
     public async Task<ActionResult<CategoryResponseDTO>> GetCategory(int Id)
     {
-      if (_dataContext.Categories == null)
-      {
-        return NotFound();
-      }
-      var Category = await _dataContext.Categories
+      var category = await _dataContext.Categories
           .Where(r => r.Id == Id)
           .Select(t => new CategoryResponseDTO
           {
@@ -75,15 +63,15 @@ namespace Backend.Controllers
             Description = t.Description
           })
           .FirstOrDefaultAsync();
-      if (Category is null)
+      if (category is null)
       {
-        return NotFound(new ApiNotFoundErrorDTO
+        return NotFound(new ApiErrorDTO
         {
           StatusCode = 404,
           Message = $"Category with id {Id} was not found."
         });
       }
-      return Category;
+      return Ok(category);
     }
 
     /// <summary>
@@ -91,29 +79,42 @@ namespace Backend.Controllers
     /// </summary>
     /// <remarks>
     /// Sample request:
-    ///
-    ///     {
-    ///        "Name": "Developer",
-    ///     }
+    /// {
+    ///   "categoryName": "Exsanguination",
+    ///   "defaultDuration": 15,
+    ///   "description": "Removal of all patients blood to offer to the vampiric overlords."
+    /// }
     /// </remarks>
     /// <response code="201">Returns the newly created category</response>
     /// <response code="400">If the category is null</response>
+    /// <response code="400">If the category name is null</response>
+    /// <response code="409">If the category name already exists</response>
     /// <response code="401">If you lack an jwt token in your request headers</response>
     /// <response code="500">Something went wrong server side.</response>
-    //POST api/Categories
     [HttpPost]
     [Authorize]
     [ProducesResponseType(typeof(CategoryResponseDTO), 201)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CategoryResponseDTO>> AddCategory([FromBody] CreateCategoryDTO dto)
     {
-      if (_dataContext.Categories == null)
+      var categoryName = dto.CategoryName.Trim();
+
+      var nameExists = await _dataContext.Categories.AnyAsync(c =>
+          c.CategoryName.ToLower() == categoryName.ToLower());
+
+      if (nameExists)
       {
-        return NotFound();
+        return Conflict(new ApiErrorDTO
+        {
+          StatusCode = 409,
+          Message = $"Category with name '{dto.CategoryName}' already exists."
+        });
       }
+
       var entity = new Category
       {
-        CategoryName = dto.CategoryName,
+        CategoryName = categoryName,
         DefaultDuration = dto.DefaultDuration,
         Description = dto.Description
       };
@@ -121,56 +122,69 @@ namespace Backend.Controllers
       _dataContext.Categories.Add(entity);
       await _dataContext.SaveChangesAsync();
 
-      var response = await _dataContext.Categories
-          .Where(r => r.Id == entity.Id)
-          .Select(t => new CategoryResponseDTO
-          {
-            Id = t.Id,
-            CategoryName = t.CategoryName,
-            DefaultDuration = t.DefaultDuration,
-            Description = t.Description
-          })
-          .FirstAsync();
+      var response = new CategoryResponseDTO
+      {
+        Id = entity.Id,
+        CategoryName = entity.CategoryName,
+        DefaultDuration = entity.DefaultDuration,
+        Description = entity.Description
+      };
 
-      return CreatedAtAction(nameof(GetCategory), new { id = response.Id }, response);
+      return CreatedAtAction(nameof(GetCategory), new { Id = response.Id }, response);
     }
+
     /// <summary>
     /// Updates a category by its ID.
     /// </summary>
-    /// <remarks>
-    /// Sample request:
-    /// {
-    ///    "name": "Updated Name",
-    /// }
-    /// </remarks>
     /// <param name="Id">Category ID</param>
     /// <response code="204">Confirms update with status code.</response>
     /// <response code="401">If you lack an jwt token in your request headers</response>
     /// <response code="404">If the category can't be found</response>
+    /// <response code="409">If the category name already exists</response>
     /// <response code="500">Something went wrong server side.</response>
-    //PUT api/Categories/{id}
     [HttpPut("{Id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ApiNotFoundErrorDTO), 404)]
+    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
+    [ProducesResponseType(typeof(ApiErrorDTO), 409)]
     public async Task<IActionResult> UpdateCategory(int Id, UpdateCategoryDTO dto)
     {
-      if (_dataContext.Categories == null)
-      {
-        return NotFound();
-      }
       var entity = await _dataContext.Categories.FindAsync(Id);
       if (entity == null)
       {
-        return NotFound(new ApiNotFoundErrorDTO
+        return NotFound(new ApiErrorDTO
         {
           StatusCode = 404,
           Message = $"Category with id {Id} was not found."
         });
       }
 
-      if (dto.CategoryName != null)
-        entity.CategoryName = dto.CategoryName;
+      if (!string.IsNullOrWhiteSpace(dto.CategoryName) &&
+        !string.Equals(dto.CategoryName, entity.CategoryName, StringComparison.OrdinalIgnoreCase))
+      {
+        var categoryName = dto.CategoryName.Trim();
+
+        var nameExists = await _dataContext.Categories.AnyAsync(c =>
+            c.Id != Id &&
+            c.CategoryName.ToLower() == categoryName.ToLower());
+
+        if (nameExists)
+        {
+          return Conflict(new ApiErrorDTO
+          {
+            StatusCode = 409,
+            Message = $"Category with name '{dto.CategoryName}' already exists."
+          });
+        }
+
+        entity.CategoryName = categoryName;
+      }
+
+      if (dto.DefaultDuration.HasValue)
+        entity.DefaultDuration = dto.DefaultDuration.Value;
+
+      if (dto.Description is not null)
+        entity.Description = dto.Description;
 
       await _dataContext.SaveChangesAsync();
 
@@ -185,29 +199,27 @@ namespace Backend.Controllers
     /// <response code="401">If you lack an jwt token in your request headers</response>
     /// <response code="404">If the category can't be found</response>
     /// <response code="500">Something went wrong server side.</response>
-    //DELETE api/Categories/{id}
     [HttpDelete("{Id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ApiNotFoundErrorDTO), 404)]
-    public async Task<ActionResult> DeleteCategory(int Id)
+    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
+    public async Task<IActionResult> DeleteCategory(int Id)
     {
-      if (_dataContext.Categories == null)
+      var category = await _dataContext.Categories.FindAsync(Id);
+      if (category is null)
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Category with id {Id} was not found." });
+
+      _dataContext.Categories.Remove(category);
+
+      try
       {
-        return NotFound();
+        await _dataContext.SaveChangesAsync();
+        return NoContent();
       }
-      var Category = await _dataContext.Categories.FindAsync(Id);
-      if (Category is null)
+      catch (DbUpdateException)
       {
-        return NotFound(new ApiNotFoundErrorDTO
-        {
-          StatusCode = 404,
-          Message = $"Category with id {Id} was not found."
-        });
+        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete category because it is referenced by other records." });
       }
-      _dataContext.Categories.Remove(Category);
-      await _dataContext.SaveChangesAsync();
-      return NoContent();
     }
   }
 }
