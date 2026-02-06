@@ -28,6 +28,7 @@ namespace Backend.Controllers
     [ProducesResponseType(typeof(IEnumerable<DoctorResponseDTO>), 200)]
     public async Task<ActionResult<IEnumerable<DoctorResponseDTO>>> GetDoctors()
     {
+      //TODO implement search, and pagination
       var doctors = await _dataContext.Doctors
           .Select(d => new DoctorResponseDTO
           {

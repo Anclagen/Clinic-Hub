@@ -28,6 +28,7 @@ namespace Backend.Controllers
     [ProducesResponseType(typeof(IEnumerable<CategoryResponseDTO>), 200)]
     public async Task<ActionResult<IEnumerable<CategoryResponseDTO>>> GetCategories()
     {
+      //TODO implement pagination
       var categories = await _dataContext.Categories
           .Select(t => new CategoryResponseDTO
           {
