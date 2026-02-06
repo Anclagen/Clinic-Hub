@@ -4,15 +4,15 @@ namespace Backend.Models
   {
     public Guid Id { get; set; }
 
-    public Guid PatientId { get; set; }
-    public required Patient Patient { get; set; }
-    public int ClinicId { get; set; }
-    public required Clinic Clinic { get; set; }
-    public Guid DoctorId { get; set; }
-    public required Doctor Doctor { get; set; }
-    public int CategoryId { get; set; }
-    public required Category Category { get; set; }
-    public int DurationMinutes { get; set; }
-    public DateTime StartAt { get; set; }
+    public required Guid PatientId { get; set; }
+    public Patient Patient { get; set; } = null!;
+    public required int ClinicId { get; set; }
+    public Clinic Clinic { get; set; } = null!;
+    public required Guid DoctorId { get; set; }
+    public Doctor Doctor { get; set; } = null!;
+    public required int CategoryId { get; set; }
+    public Category Category { get; set; } = null!;
+    public required int DurationMinutes { get; set; }
+    public required DateTime StartAt { get; set; }
   }
 }
