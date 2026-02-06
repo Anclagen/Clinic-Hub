@@ -1,4 +1,4 @@
-public class ApiErrorDTO
+public class ApiBadRequestErrorDTO
 {
   /// <example>400</example>
   public int StatusCode { get; set; }
@@ -10,7 +10,7 @@ public class ApiErrorDTO
   public string? Field { get; set; }
 }
 
-public class ApiNotFoundErrorDTO
+public class ApiErrorDTO
 {
   /// <example>404</example>
   public int StatusCode { get; set; }

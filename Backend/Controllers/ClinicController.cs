@@ -82,9 +82,10 @@ namespace Backend.Controllers
     /// <remarks>
     /// Sample request:
     /// {
-    ///   "clinicName": "Exsanguination",
-    ///   "defaultDuration": 15,
-    ///   "description": "Removal of all patients blood to offer to the vampiric overlords."
+    ///   "clinicName": "Fair View Clinic",
+    ///   "address": "Fair View, Fairvillia, 5555",
+    ///   "imageUrl": "https://fairview-clinic.com/assets/images/clinic.jpg",
+    ///   "imageAlt": "Image of Fair View Clinic entrance"
     /// }
     /// </remarks>
     /// <response code="201">Returns the newly created clinic</response>
@@ -99,7 +100,15 @@ namespace Backend.Controllers
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ClinicResponseDTO>> AddClinic([FromBody] CreateClinicDTO dto)
     {
-      var clinicName = dto.ClinicName.Trim();
+      var clinicName = dto.ClinicName?.Trim();
+      if (string.IsNullOrWhiteSpace(clinicName))
+      {
+        return BadRequest(new ApiErrorDTO
+        {
+          StatusCode = 400,
+          Message = "ClinicName is required."
+        });
+      }
       var normalized = clinicName.ToLower();
 
       var nameExists = await _dataContext.Clinics.AnyAsync(c =>
@@ -124,7 +133,7 @@ namespace Backend.Controllers
 
       _dataContext.Clinics.Add(entity);
       try { await _dataContext.SaveChangesAsync(); }
-      catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Clinic name already exists." }); }
+      catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Create failed due to database constraint." }); }
 
       var response = new ClinicResponseDTO
       {
@@ -141,8 +150,18 @@ namespace Backend.Controllers
     /// <summary>
     /// Updates a clinic by its ID.
     /// </summary>
+    /// <remarks>
+    /// Sample request:
+    /// {
+    ///   "clinicName": "Not So Fair View Clinic",
+    ///   "address": "Fair View, Unfairvillia, 5555",
+    ///   "imageUrl": "https://fairview-clinic.com/assets/images/clinic.jpg",
+    ///   "imageAlt": "Image of Fair View Clinic entrance"
+    /// }
+    /// </remarks>
     /// <param name="Id">Clinic ID</param>
     /// <response code="204">Confirms update with status code.</response>
+    /// <response code="400">Validation error incorrect url structure on imageUrl.</response>
     /// <response code="401">If you lack an jwt token in your request headers</response>
     /// <response code="404">If the clinic can't be found</response>
     /// <response code="409">If the clinic name already exists</response>
@@ -163,26 +182,29 @@ namespace Backend.Controllers
           Message = $"Clinic with id {Id} was not found."
         });
       }
-
-      if (!string.IsNullOrWhiteSpace(dto.ClinicName) &&
-        !string.Equals(dto.ClinicName, entity.ClinicName, StringComparison.OrdinalIgnoreCase))
+      if (!string.IsNullOrWhiteSpace(dto.ClinicName))
       {
         var clinicName = dto.ClinicName.Trim();
-        var normalized = clinicName.ToLower();
+        if (!string.Equals(clinicName, entity.ClinicName, StringComparison.OrdinalIgnoreCase))
+        {
 
-        var nameExists = await _dataContext.Clinics.AnyAsync(c =>
+          var normalized = clinicName.ToLower();
+
+          var nameExists = await _dataContext.Clinics.AnyAsync(c =>
+            c.Id != Id &&
             c.ClinicName.ToLower() == normalized);
 
-        if (nameExists)
-        {
-          return Conflict(new ApiErrorDTO
+          if (nameExists)
           {
-            StatusCode = 409,
-            Message = $"Clinic with name '{dto.ClinicName}' already exists."
-          });
-        }
+            return Conflict(new ApiErrorDTO
+            {
+              StatusCode = 409,
+              Message = $"Clinic with name '{dto.ClinicName}' already exists."
+            });
+          }
 
-        entity.ClinicName = clinicName;
+          entity.ClinicName = clinicName;
+        }
       }
       if (dto.Address is not null)
         entity.Address = dto.Address;
@@ -192,7 +214,7 @@ namespace Backend.Controllers
         entity.ImageAlt = dto.ImageAlt;
 
       try { await _dataContext.SaveChangesAsync(); }
-      catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Clinic name already exists." }); }
+      catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed due to database constraint." }); }
 
       return NoContent();
     }
