@@ -25,11 +25,48 @@ namespace Backend.Controllers
     /// <returns>A list of doctors</returns>
     /// <response code="500">Something went wrong server side.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<DoctorResponseDTO>), 200)]
-    public async Task<ActionResult<IEnumerable<DoctorResponseDTO>>> GetDoctors()
+    [ProducesResponseType(typeof(PagedResponseDTO<DoctorResponseDTO>), 200)]
+    public async Task<IActionResult> GetDoctors(
+    [FromQuery] string? q,
+    [FromQuery] int? clinicId,
+    [FromQuery] int? specialityId,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 20
+)
     {
-      //TODO implement search, and pagination
-      var doctors = await _dataContext.Doctors
+      page = Math.Max(page, 1);
+      pageSize = Math.Clamp(pageSize, 1, 100);
+
+      var query = _dataContext.Doctors.AsNoTracking().AsQueryable();
+
+      if (clinicId.HasValue)
+        query = query.Where(d => d.ClinicId == clinicId.Value);
+
+      if (specialityId.HasValue)
+        query = query.Where(d => d.SpecialityId == specialityId.Value);
+
+      if (!string.IsNullOrWhiteSpace(q))
+      {
+        var tokens = q.Trim()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(t => t.ToLower())
+            .ToArray();
+
+        foreach (var token in tokens)
+        {
+          query = query.Where(d =>
+              d.Firstname.ToLower().Contains(token) ||
+              d.Lastname.ToLower().Contains(token));
+        }
+      }
+
+      var total = await query.CountAsync();
+      var data = await query
+          .OrderBy(d => d.Lastname)
+          .ThenBy(d => d.Firstname)
+          .ThenBy(d => d.Id)
+          .Skip((page - 1) * pageSize)
+          .Take(pageSize)
           .Select(d => new DoctorResponseDTO
           {
             Id = d.Id,
@@ -38,11 +75,21 @@ namespace Backend.Controllers
             SpecialityId = d.SpecialityId,
             SpecialityName = d.Speciality.SpecialityName,
             ClinicId = d.ClinicId,
-            ClinicName = d.Clinic.ClinicName,
+            ClinicName = d.Clinic.ClinicName
           })
           .ToListAsync();
 
-      return Ok(doctors);
+      return Ok(new PagedResponseDTO<DoctorResponseDTO>
+      {
+        Data = data,
+        Pagination = new PaginationDTO
+        {
+          Page = page,
+          PageSize = pageSize,
+          Total = total,
+          TotalPages = (int)Math.Ceiling(total / (double)pageSize)
+        }
+      });
     }
 
     /// <summary>
