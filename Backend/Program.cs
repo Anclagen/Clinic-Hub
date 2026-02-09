@@ -6,6 +6,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +70,7 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
+    options.MapInboundClaims = false;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -81,6 +83,39 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8
             .GetBytes(jwtSettings.SecretKey)
         ),
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnChallenge = async context =>
+        {
+            // stops the default empty 401 response
+            context.HandleResponse();
+
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+
+            var payload = new ApiErrorDTO
+            {
+                StatusCode = 401,
+                Message = "Unauthorized."
+            };
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+        },
+
+        OnForbidden = async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = "application/json";
+
+            var payload = new ApiErrorDTO
+            {
+                StatusCode = 403,
+                Message = "Forbidden. You don't have permission to access this resource."
+            };
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+        }
     };
 });
 
