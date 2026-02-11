@@ -24,6 +24,7 @@ public class AuthService
     if (patient == null)
       return false;
 
+
     var passwordHasher = new PasswordHasher<Patient>();
     var result = passwordHasher.VerifyHashedPassword(patient, patient.PasswordHash, password);
 
@@ -45,6 +46,7 @@ public class AuthService
       Firstname = firstname,
       Lastname = lastname,
       IsGuest = false,
+      IsDeleted = false,
       DateOfBirth = dateOfBirth
     };
 
@@ -59,11 +61,13 @@ public class AuthService
     return await _dataContext.Patients.SingleOrDefaultAsync(u => u.Email == email);
   }
 
-  public string GenerateToken(Patient patient)
+  public string GenerateToken(Patient patient, int role = 1)
   {
+    string[]? roles = new[] { "Admin", "Patient" };
     var claims = new[]
     {
-                new Claim(JwtRegisteredClaimNames.Sub, patient.Email),
+                new Claim(JwtRegisteredClaimNames.Sub, patient.Id.ToString()),
+                new Claim(ClaimTypes.Role, roles[role]),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

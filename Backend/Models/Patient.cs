@@ -3,11 +3,13 @@ namespace Backend.Models
   public class Patient
   {
     public Guid Id { get; set; }
-    public required string Firstname { get; set; }
-    public required string Lastname { get; set; }
+    public required string Firstname { get; set; } = null!;
+    public required string Lastname { get; set; } = null!;
     public string? Email { get; set; }
-    public required bool IsGuest { get; set; }
-    public required DateOnly DateOfBirth { get; set; }
+    public bool IsGuest { get; set; }
+
+    public bool IsDeleted { get; set; } = false;
+    public DateOnly? DateOfBirth { get; set; }
     public string? PasswordHash { get; set; }
 
     public string? Gender { get; set; }

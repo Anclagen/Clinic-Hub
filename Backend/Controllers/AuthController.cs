@@ -31,6 +31,8 @@ namespace Backend.Controllers
 
       if (user == null)
         return Unauthorized("Invalid email or password");
+      if (user.IsDeleted == true)
+        return Unauthorized("This user has been deleted");
       if (user.PasswordHash == null)
         return Unauthorized("You must register first");
 

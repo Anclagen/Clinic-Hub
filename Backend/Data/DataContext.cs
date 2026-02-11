@@ -19,11 +19,10 @@ namespace Backend.Data
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-      base.OnModelCreating(modelBuilder);
-      var dateOnlyConverter = new ValueConverter<DateOnly, DateTime>(
-       d => d.ToDateTime(TimeOnly.MinValue),
-       d => DateOnly.FromDateTime(d)
-     );
+      var dateOnlyConverter = new ValueConverter<DateOnly?, DateTime?>(
+        d => d.HasValue ? d.Value.ToDateTime(TimeOnly.MinValue) : null,
+        d => d.HasValue ? DateOnly.FromDateTime(d.Value) : null
+      );
 
       modelBuilder.Entity<Patient>()
         .Property(p => p.DateOfBirth)
