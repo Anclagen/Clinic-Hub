@@ -145,7 +145,7 @@ namespace Backend.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("longtext");
 
-                    b.Property<DateOnly>("DateOfBirth")
+                    b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("date");
 
                     b.Property<string>("DriverLicenseNumber")
@@ -160,6 +160,9 @@ namespace Backend.Migrations
 
                     b.Property<string>("Gender")
                         .HasColumnType("longtext");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsGuest")
                         .HasColumnType("tinyint(1)");

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20260204202942_Initial")]
+    [Migration("20260213092700_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -148,7 +148,7 @@ namespace Backend.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("longtext");
 
-                    b.Property<DateOnly>("DateOfBirth")
+                    b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("date");
 
                     b.Property<string>("DriverLicenseNumber")
@@ -163,6 +163,9 @@ namespace Backend.Migrations
 
                     b.Property<string>("Gender")
                         .HasColumnType("longtext");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsGuest")
                         .HasColumnType("tinyint(1)");

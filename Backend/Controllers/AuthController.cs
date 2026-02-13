@@ -47,7 +47,7 @@ namespace Backend.Controllers
         Email = user.Email,
         Firstname = user.Firstname,
         Lastname = user.Lastname,
-        DateOfBirth = user.DateOfBirth,
+        DateOfBirth = user.DateOfBirth
       });
     }
 
