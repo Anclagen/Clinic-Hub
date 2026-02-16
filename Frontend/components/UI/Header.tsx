@@ -25,16 +25,16 @@ export default function Header() {
       { href: "/doctors", label: "Doctors" },
       { href: "/clinics", label: "Clinics" },
       { href: "/profile", label: "Profile", requiresAuth: true },
-      { href: "/login", label: "Login", hideWhenAuth: true, cta: "secondary" },
-      { href: "/register", label: "Register", hideWhenAuth: true, cta: "primary" },
+      { href: "/auth/login", label: "Login", hideWhenAuth: true, cta: "secondary" },
+      { href: "/auth/register", label: "Register", hideWhenAuth: true, cta: "primary" },
     ],
     [],
   );
 
   const visibleItems = useMemo(() => {
     return navItems.filter((item) => {
-      if (item.requiresAuth && !isAuthed) return false;
       if (item.hideWhenAuth && isAuthed) return false;
+      if (item.requiresAuth && !isAuthed) return false;
       return true;
     });
   }, [navItems, isAuthed]);
@@ -80,7 +80,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85">
       <div className="mx-auto max-w-6xl px-4">
-        <nav className="flex items-center justify-between py-3">
+        <nav className="flex items-center py-3">
           <Link
             href="/"
             className="flex items-center gap-3 rounded-md px-1 py-1 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -94,22 +94,13 @@ export default function Header() {
               ClinicHub
             </span>
           </Link>
-
-          <div className="hidden items-center gap-2 md:flex">
+          <div className="hidden items-center gap-2 md:flex ms-auto">
             <NavLinks
               items={visibleItems}
               isActive={isActive}
               variant="desktop"
               onNavigate={closeMobileMenu}
             />
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition hover:border-secondary hover:bg-secondary-soft hover:text-secondary dark:hover:bg-secondary-soft/40 focus:outline-none focus:ring-2 focus:ring-primary"
-              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            >
-              {theme === "dark" ? "Light" : "Dark"}
-            </button>
             {isAuthed ? (
               <button
                 type="button"
@@ -120,7 +111,37 @@ export default function Header() {
               </button>
             ) : null}
           </div>
-
+          <div className="ms-auto md:ms-3 me-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground/80 transition hover:border-secondary hover:bg-secondary-soft hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            >
+              {theme === "dark" ? (
+                // Sun icon
+                <svg
+                  className="h-5 w-5 transition-transform duration-300"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="5" />
+                  <path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" />
+                </svg>
+              ) : (
+                // Moon icon
+                <svg
+                  className="h-5 w-5 transition-transform duration-300"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z" />
+                </svg>
+              )}
+            </button>
+          </div>{" "}
           <div className="md:hidden">
             <button
               type="button"
@@ -144,14 +165,6 @@ export default function Header() {
       </div>
 
       <MobileMenu open={isOpen} onClose={closeMobileMenu}>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="w-full rounded-xl border border-secondary px-4 py-3 text-left text-base font-medium text-secondary transition hover:bg-secondary-soft dark:hover:bg-secondary-soft/40"
-        >
-          Switch to {theme === "dark" ? "Light" : "Dark"} Mode
-        </button>
-
         <NavLinks
           items={visibleItems}
           isActive={isActive}
@@ -171,6 +184,13 @@ export default function Header() {
             Logout
           </button>
         ) : null}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="w-full rounded-xl border border-border px-4 py-3 text-left text-base font-medium text-foreground transition hover:bg-secondary-soft"
+        >
+          {theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        </button>
       </MobileMenu>
     </header>
   );

@@ -66,7 +66,7 @@ export default function MobileMenu({ open, onClose, title = "Menu", children }: 
           </button>
         </div>
 
-        <div className="flex flex-col gap-2 p-4">{children}</div>
+        <div className="flex flex-col gap-2 p-4 bg-background">{children}</div>
       </aside>
     </div>
   );

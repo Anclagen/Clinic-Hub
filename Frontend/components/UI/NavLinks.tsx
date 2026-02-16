@@ -32,7 +32,7 @@ export default function NavLinks({
     }
 
     if (item.cta === "secondary") {
-      return "border border-secondary text-secondary hover:bg-secondary-soft";
+      return "border border-secondary bg-secondary text-black  hover:bg-secondary-hover";
     }
 
     if (active) {
