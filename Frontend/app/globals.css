@@ -1,22 +1,73 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* ========== Light Theme ========== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base */
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  /* Primary - Trust Blue */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #dbeafe;
+  /* Secondary - Fresh Teal */
+  --secondary: #0d9488;
+  --secondary-hover: #14b8a6;
+  --secondary-soft: #ccfbf1;
+  /* Neutrals */
+  --border: #e2e8f0;
+  --muted: #94a3b8;
+  --card: #ffffff;
+  /* Status */
+  --success: #16a34a;
+  --success-soft: #dcfce7;
+  --warning: #f59e0b;
+  --warning-soft: #fef3c7;
+  --error: #dc2626;
+  --error-soft: #fee2e2;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ========== Dark Theme ========== */
+:root.dark {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-soft: #1e3a8a;
+  --secondary: #14b8a6;
+  --secondary-hover: #0d9488;
+  --secondary-soft: #134e4a;
+  --border: #1e293b;
+  --muted: #64748b;
+  --card: #111827;
+  --success: #22c55e;
+  --success-soft: #052e16;
+  --warning: #fbbf24;
+  --warning-soft: #451a03;
+  --error: #ef4444;
+  --error-soft: #450a0a;
 }
 
 body {
