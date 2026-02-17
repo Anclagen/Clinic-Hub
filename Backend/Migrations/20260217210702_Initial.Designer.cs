@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20260213092700_Initial")]
+    [Migration("20260217210702_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -121,6 +121,9 @@ namespace Backend.Migrations
 
                     b.Property<string>("Firstname")
                         .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ImageUrl")
                         .HasColumnType("longtext");
 
                     b.Property<string>("Lastname")

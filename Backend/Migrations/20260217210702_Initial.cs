@@ -96,6 +96,7 @@ namespace Backend.Migrations
                     Id = table.Column<Guid>(type: "char(36)", nullable: false),
                     Firstname = table.Column<string>(type: "longtext", nullable: false),
                     Lastname = table.Column<string>(type: "longtext", nullable: false),
+                    ImageUrl = table.Column<string>(type: "longtext", nullable: true),
                     SpecialityId = table.Column<int>(type: "int", nullable: false),
                     ClinicId = table.Column<int>(type: "int", nullable: false)
                 },

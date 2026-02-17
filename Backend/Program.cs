@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json;
+using Backend.Data.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -131,7 +132,26 @@ builder.Services.AddCors(options =>
    });
 });
 
+builder.Services.AddScoped<SeedRunner>();
+builder.Services.AddScoped<ISeeder, CategorySeeder>();
+builder.Services.AddScoped<ISeeder, ClinicSeeder>();
+builder.Services.AddScoped<ISeeder, SpecialitySeeder>();
+builder.Services.AddScoped<ISeeder, DoctorSeeder>();
+
 var app = builder.Build();
+
+if (args.Contains("--seed"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<DataContext>();
+
+    await db.Database.MigrateAsync();
+    var runner = scope.ServiceProvider.GetRequiredService<SeedRunner>();
+    await runner.RunAsync();
+
+    Console.WriteLine("Seeding done.");
+    return;
+}
 
 // Configure the HTTP request pipeline.
 // if (app.Environment.IsDevelopment())

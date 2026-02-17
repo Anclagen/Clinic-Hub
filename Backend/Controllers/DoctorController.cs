@@ -72,6 +72,7 @@ namespace Backend.Controllers
             Id = d.Id,
             Firstname = d.Firstname,
             Lastname = d.Lastname,
+            ImageUrl = d.ImageUrl,
             SpecialityId = d.SpecialityId,
             SpecialityName = d.Speciality.SpecialityName,
             ClinicId = d.ClinicId,
@@ -111,6 +112,7 @@ namespace Backend.Controllers
             Id = d.Id,
             Firstname = d.Firstname,
             Lastname = d.Lastname,
+            ImageUrl = d.ImageUrl,
             SpecialityId = d.SpecialityId,
             SpecialityName = d.Speciality.SpecialityName,
             ClinicId = d.ClinicId,
@@ -136,6 +138,7 @@ namespace Backend.Controllers
     /// {
     ///   "firstname": "Doc",
     ///   "lastname": "Tor",
+    ///   "imageUrl": "https://www.example.com/example.jpg"
     ///   "specialityId": 1,
     ///   "clinicId": 2
     /// }
@@ -172,6 +175,7 @@ namespace Backend.Controllers
       {
         Firstname = dto.Firstname.Trim(),
         Lastname = dto.Lastname.Trim(),
+        ImageUrl = dto.ImageUrl,
         SpecialityId = dto.SpecialityId,
         ClinicId = dto.ClinicId
       };
@@ -186,6 +190,7 @@ namespace Backend.Controllers
         Id = entity.Id,
         Firstname = entity.Firstname,
         Lastname = entity.Lastname,
+        ImageUrl = entity.ImageUrl,
         SpecialityId = entity.SpecialityId,
         SpecialityName = lookup.Speciality.SpecialityName,
         ClinicId = entity.ClinicId,
@@ -257,6 +262,9 @@ namespace Backend.Controllers
 
       if (dto.Lastname is not null)
         entity.Lastname = dto.Lastname.Trim();
+
+      if (dto.ImageUrl is not null)
+        entity.ImageUrl = dto.ImageUrl;
 
       try { await _dataContext.SaveChangesAsync(); }
       catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed due to database constraint." }); }

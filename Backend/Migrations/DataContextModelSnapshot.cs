@@ -120,6 +120,9 @@ namespace Backend.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Lastname")
                         .IsRequired()
                         .HasColumnType("longtext");
