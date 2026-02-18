@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerSchema, type RegisterFormValues } from "./authSchemas";
-import { InputField } from "@/components/UI/InputField";
-import { Button } from "@/components/UI/Button";
+import { InputField } from "@/features/UI/InputField";
+import { Button } from "@/features/UI/Button";
 import { ApiError } from "@/api/errors";
 
 // You need to implement register() in your auth service to match your backend.

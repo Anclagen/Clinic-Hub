@@ -33,6 +33,24 @@ Questions on brief:
 - guest user needs first name, last name, and dob to make an appointment, can I add email as required/optional to allow registration follow up to edit appointment?
 - You have email and email address in the brief for patient info I assume the second is a mistake and should be physical address?
 
+References
+
+- https://medium.com/@emreemenekse/a-comprehensive-guide-to-jwt-authentication-in-net-core-8e2d8859b1be
+
+// jwt claims sub changes to nameidentifier when using asp.net core identity, how to fix?
+
+- https://stackoverflow.com/questions/62475109/asp-net-core-jwt-authentication-changes-claims-sub
+- https://stackoverflow.com/questions/68252520/httpcontext-user-claims-doesnt-match-jwt-token-sub-changes-to-nameidentifie/68253821#68253821
+
+Seeders
+https://medium.com/@samsondavidoff/data-seeding-in-asp-net-core-the-right-way-4c7c1f4b1773
+
+Image error handling
+https://dev.to/eidellev/handling-broken-images-in-react-4oo2
+
+Heart rate animation
+https://github.com/Hona-08/Heart-rate-monitor-Pure-CSS-Animation
+
 PII
 _Based on course material defining non-sensitive PII as publicly available demographic information (including gender and religion), guest users are permitted to store a limited subset of non-sensitive PII. For guest bookings, only first name, last name, email, and optionally birthdate, gender, and religion are stored. Sensitive PII such as government identifiers, tax numbers, insurance numbers, and authentication credentials are restricted to registered patients and never stored for guest users._
 

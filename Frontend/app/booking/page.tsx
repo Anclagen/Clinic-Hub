@@ -1,4 +1,4 @@
-import BookingForm from "@/components/booking/BookingForm";
+import BookingForm from "@/features/booking/BookingForm";
 
 export default function BookingPage() {
   return (
