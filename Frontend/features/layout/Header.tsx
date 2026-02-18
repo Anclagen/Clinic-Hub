@@ -78,40 +78,43 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85">
-      <div className="mx-auto max-w-6xl px-4">
-        <nav className="flex items-center py-3">
+    <header className="sticky top-0 z-50 px-4 pt-3">
+      <div className="mx-auto max-w-6xl rounded-2xl border border-border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85">
+        <nav className="flex h-16 items-center gap-3 px-4 md:px-6">
           <Link
             href="/"
-            className="flex items-center gap-3 rounded-md px-1 py-1 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex items-center gap-2 rounded-md px-1 py-1 focus:outline-none focus:ring-2 focus:ring-primary"
             aria-label="Go to home"
             onClick={closeMobileMenu}
           >
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white font-bold">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white text-sm font-bold">
               CH
             </div>
             <span className="hidden text-lg font-semibold tracking-tight text-foreground sm:block">
               ClinicHub
             </span>
           </Link>
-          <div className="hidden items-center gap-2 md:flex ms-auto">
+
+          <div className="hidden flex-1 items-center justify-center gap-1 md:flex">
             <NavLinks
               items={visibleItems}
               isActive={isActive}
               variant="desktop"
               onNavigate={closeMobileMenu}
             />
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
             {isAuthed ? (
               <button
                 type="button"
                 onClick={() => logout?.()}
-                className="ml-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition hover:border-error hover:bg-error-soft hover:text-error focus:outline-none focus:ring-2 focus:ring-primary"
+                className="hidden rounded-full border border-border px-3 py-2 text-sm font-medium text-foreground/80 transition hover:border-error hover:bg-error-soft hover:text-error focus:outline-none focus:ring-2 focus:ring-primary md:inline-flex"
               >
                 Logout
               </button>
             ) : null}
-          </div>
-          <div className="ms-auto md:ms-3 me-3">
+
             <button
               type="button"
               onClick={toggleTheme}
@@ -119,7 +122,6 @@ export default function Header() {
               aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
             >
               {theme === "dark" ? (
-                // Sun icon
                 <svg
                   className="h-5 w-5 transition-transform duration-300"
                   viewBox="0 0 24 24"
@@ -131,7 +133,6 @@ export default function Header() {
                   <path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" />
                 </svg>
               ) : (
-                // Moon icon
                 <svg
                   className="h-5 w-5 transition-transform duration-300"
                   viewBox="0 0 24 24"
@@ -141,25 +142,26 @@ export default function Header() {
                 </svg>
               )}
             </button>
-          </div>{" "}
-          <div className="md:hidden">
-            <button
-              type="button"
-              onClick={() => setIsOpen(true)}
-              className="inline-flex items-center justify-center rounded-md p-2 text-muted transition hover:bg-primary-soft hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-              aria-label="Open menu"
-              aria-expanded={isOpen}
-            >
-              <span className="sr-only">Open main menu</span>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="M4 6h16M4 12h16M4 18h16"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+
+            <div className="md:hidden">
+              <button
+                type="button"
+                onClick={() => setIsOpen(true)}
+                className="inline-flex items-center justify-center rounded-md p-2 text-muted transition hover:bg-primary-soft hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Open menu"
+                aria-expanded={isOpen}
+              >
+                <span className="sr-only">Open main menu</span>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 6h16M4 12h16M4 18h16"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </nav>
       </div>
