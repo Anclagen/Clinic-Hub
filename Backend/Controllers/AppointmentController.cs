@@ -122,6 +122,83 @@ namespace Backend.Controllers
     }
 
     /// <summary>
+    /// Retrieves booked time slots for a doctor inside a date range.
+    /// </summary>
+    /// <param name="doctorId">Doctor identifier.</param>
+    /// <param name="from">Inclusive range start (UTC/local DateTime).</param>
+    /// <param name="to">Exclusive range end (UTC/local DateTime).</param>
+    /// <response code="200">Returns booked slots for the given doctor and range.</response>
+    /// <response code="400">If query parameters are invalid.</response>
+    [HttpGet("booked-times")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IEnumerable<BookedTimeSlotDTO>), 200)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), 400)]
+    public async Task<ActionResult<IEnumerable<BookedTimeSlotDTO>>> GetBookedTimes(
+      [FromQuery] Guid doctorId,
+      [FromQuery] DateTime from,
+      [FromQuery] DateTime to
+    )
+    {
+      if (doctorId == Guid.Empty)
+      {
+        return BadRequest(new ApiBadRequestErrorDTO
+        {
+          StatusCode = 400,
+          Field = "doctorId",
+          Message = "doctorId is required."
+        });
+      }
+
+      if (to <= from)
+      {
+        return BadRequest(new ApiBadRequestErrorDTO
+        {
+          StatusCode = 400,
+          Field = "to",
+          Message = "to must be greater than from."
+        });
+      }
+
+      if ((to - from).TotalDays > 31)
+      {
+        return BadRequest(new ApiBadRequestErrorDTO
+        {
+          StatusCode = 400,
+          Field = "to",
+          Message = "Date range cannot exceed 31 days."
+        });
+      }
+
+      var doctorExists = await _dataContext.Doctors.AsNoTracking().AnyAsync(d => d.Id == doctorId);
+      if (!doctorExists)
+      {
+        return BadRequest(new ApiBadRequestErrorDTO
+        {
+          StatusCode = 400,
+          Field = "doctorId",
+          Message = $"Doctor with id {doctorId} was not found."
+        });
+      }
+
+      var slots = await _dataContext.Appointments
+        .AsNoTracking()
+        .Where(a =>
+          a.DoctorId == doctorId &&
+          a.StartAt < to &&
+          a.StartAt.AddMinutes(a.DurationMinutes) > from
+        )
+        .OrderBy(a => a.StartAt)
+        .Select(a => new BookedTimeSlotDTO
+        {
+          StartAt = a.StartAt,
+          EndAt = a.StartAt.AddMinutes(a.DurationMinutes)
+        })
+        .ToListAsync();
+
+      return Ok(slots);
+    }
+
+    /// <summary>
     /// Creates a appointment
     /// </summary>
     /// <remarks>

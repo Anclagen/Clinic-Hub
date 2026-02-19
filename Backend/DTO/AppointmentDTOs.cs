@@ -33,3 +33,9 @@ public class AppointmentResponseDTO
   public int Duration { get; set; }
   public DateTime StartAt { get; set; }
 }
+
+public class BookedTimeSlotDTO
+{
+  public DateTime StartAt { get; set; }
+  public DateTime EndAt { get; set; }
+}

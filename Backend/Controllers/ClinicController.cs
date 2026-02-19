@@ -63,7 +63,20 @@ namespace Backend.Controllers
             ClinicName = c.ClinicName,
             Address = c.Address,
             ImageUrl = c.ImageUrl,
-            ImageAlt = c.ImageAlt
+            ImageAlt = c.ImageAlt,
+            Doctors = c.Doctors
+              .OrderBy(d => d.Lastname)
+              .ThenBy(d => d.Firstname)
+              .Select(d => new ClinicDoctorOptionDTO
+              {
+                Id = d.Id,
+                Firstname = d.Firstname,
+                Lastname = d.Lastname,
+                ImageUrl = d.ImageUrl,
+                SpecialityId = d.SpecialityId,
+                SpecialityName = d.Speciality.SpecialityName
+              })
+              .ToList()
           })
           .FirstOrDefaultAsync();
       if (clinic is null)
