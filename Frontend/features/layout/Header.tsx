@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState, useCallback, useEffect } from "react";
@@ -87,15 +88,17 @@ export default function Header() {
             aria-label="Go to home"
             onClick={closeMobileMenu}
           >
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white text-sm font-bold">
-              CH
-            </div>
-            <span className="hidden text-lg font-semibold tracking-tight text-foreground sm:block">
-              ClinicHub
-            </span>
+            <Image
+              src="/images/ui/clinic_hub_logo.png"
+              alt="Clinic Hub logo"
+              width={320}
+              height={80}
+              className="h-8 w-32 object-contain"
+              priority
+            />
           </Link>
 
-          <div className="hidden flex-1 items-center justify-center gap-1 md:flex">
+          <div className="hidden ml-auto items-center justify-end gap-1 md:flex">
             <NavLinks
               items={visibleItems}
               isActive={isActive}
@@ -104,7 +107,7 @@ export default function Header() {
             />
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto md:ml-0 flex items-center gap-2">
             {isAuthed ? (
               <button
                 type="button"
