@@ -10,8 +10,8 @@ export type Category = {
 export type CreateCategory = Omit<Category, "id">;
 
 export const CategoriesService = {
-  all: () => api<Category[]>({ path: "/categories/" }),
-  byId: (id: number) => api<Category>({ path: `/categories/${id}` }),
+  all: () => api<Category[]>({ path: "/categories/", auth: false }),
+  byId: (id: number) => api<Category>({ path: `/categories/${id}`, auth: false }),
   create: (payload: CreateCategory) =>
     api<Category>({ method: "POST", path: "/categories/", body: payload }),
   update: (id: number, payload: CreateCategory) =>

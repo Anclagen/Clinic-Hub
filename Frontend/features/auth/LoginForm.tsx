@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormValues } from "./authSchemas";
-import { InputField } from "@/features/UI/InputField";
+import { InputField } from "@/features/UI/forms/InputField";
 import { Button } from "@/features/UI/Button";
-import { login } from "@/api/services/authService";
+import { AuthServices } from "@/api/services/authService";
 import { ApiError } from "@/api/errors";
 import { useRouter } from "next/navigation";
 
@@ -25,7 +25,7 @@ export function LoginForm() {
   const onSubmit = async (values: LoginFormValues) => {
     setApiError(null);
     try {
-      await login(values);
+      await AuthServices.login(values);
       router.push("/profile");
     } catch (e) {
       if (e instanceof ApiError) setApiError(e.message);

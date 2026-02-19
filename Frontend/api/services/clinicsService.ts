@@ -6,6 +6,16 @@ export type Clinic = {
   address?: string | null;
   imageUrl?: string | null;
   imageAlt?: string | null;
+  doctors?: ClinicDoctorOption[];
+};
+
+export type ClinicDoctorOption = {
+  id: string;
+  firstname: string;
+  lastname: string;
+  imageUrl?: string | null;
+  specialityId: number;
+  specialityName: string;
 };
 
 export const ClinicsService = {

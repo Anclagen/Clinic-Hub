@@ -2,13 +2,10 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerSchema, type RegisterFormValues } from "./authSchemas";
-import { InputField } from "@/features/UI/InputField";
+import { InputField } from "@/features/UI/forms/InputField";
 import { Button } from "@/features/UI/Button";
 import { ApiError } from "@/api/errors";
-
-// You need to implement register() in your auth service to match your backend.
-// If your backend doesn't support register yet, wire it when you add the endpoint.
-import { register as registerUser } from "@/api/services/authService";
+import { AuthServices } from "@/api/services/authService";
 
 export function RegisterForm({ onRegistered }: { onRegistered?: () => void }) {
   const [apiError, setApiError] = useState<string | null>(null);
@@ -38,7 +35,7 @@ export function RegisterForm({ onRegistered }: { onRegistered?: () => void }) {
 
     try {
       const { confirmPassword, ...payload } = values;
-      await registerUser(payload); // <- your API contract decides exact shape
+      await AuthServices.register(payload); // <- your API contract decides exact shape
 
       setSuccess(true);
       reset();
