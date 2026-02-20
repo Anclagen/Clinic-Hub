@@ -24,11 +24,19 @@ export const AppointmentsService = {
       query: { doctorId, from, to },
     }),
 
-  create: (payload: CreateAppointmentPayload) =>
+  createAnonymous: (payload: CreateAppointmentPayload) =>
     api({
       method: "POST",
       path: "/appointments",
       auth: false,
+      body: payload,
+    }),
+
+  create: (payload: CreateAppointmentPayload) =>
+    api({
+      method: "POST",
+      path: "/appointments",
+      auth: true,
       body: payload,
     }),
 };
