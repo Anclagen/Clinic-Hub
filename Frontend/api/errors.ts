@@ -15,3 +15,13 @@ export class ApiError extends Error {
     this.payload = args.payload;
   }
 }
+
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError;
+}
+
+export function getUnknownMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return "Something went wrong while booking, please refresh the page and try again.";
+}

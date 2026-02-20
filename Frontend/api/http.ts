@@ -5,11 +5,11 @@ type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type RequestOptions = {
   method?: HttpMethod;
-  path: string; // "/doctors"
+  path: string;
   query?: Record<string, string | number | boolean | null | undefined>;
   headers?: Record<string, string>;
-  body?: unknown; // will be JSON.stringify unless it's FormData/Blob/etc.
-  auth?: boolean; // default true
+  body?: unknown;
+  auth?: boolean;
   signal?: AbortSignal;
 };
 
@@ -34,6 +34,10 @@ function isBodyInit(x: unknown): x is BodyInit {
   );
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 async function safeParseJson(res: Response) {
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return undefined;
@@ -42,6 +46,18 @@ async function safeParseJson(res: Response) {
   } catch {
     return undefined;
   }
+}
+
+function getErrorMessage(payload: unknown, res: Response): string {
+  if (isObject(payload) && typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  if (typeof payload === "string") {
+    return payload;
+  }
+
+  return `${res.status} ${res.statusText}`;
 }
 
 export function createHttpClient(config: ApiConfig) {
@@ -70,7 +86,6 @@ export function createHttpClient(config: ApiConfig) {
     if (opts.body !== undefined) {
       if (isBodyInit(opts.body)) {
         body = opts.body;
-        // If user passed FormData etc, don't force JSON content-type.
       } else {
         body = JSON.stringify(opts.body);
         headers["Content-Type"] ??= "application/json";
@@ -85,21 +100,15 @@ export function createHttpClient(config: ApiConfig) {
         signal: opts.signal ?? controller.signal,
       });
 
-      const payload = await safeParseJson(res);
+      const payload: unknown = await safeParseJson(res);
 
       if (!res.ok) {
-        const message =
-          (payload as any).message ||
-          (typeof payload === "string" ? payload : undefined) ||
-          `${res.status} ${res.statusText}`;
-
+        const message = getErrorMessage(payload, res);
         throw new ApiError({ status: res.status, url, message, payload });
       }
 
-      // No content
       if (res.status === 204) return undefined as T;
 
-      // Prefer JSON, fallback to text
       if ((res.headers.get("content-type") ?? "").includes("application/json")) {
         return (payload ?? (await res.json())) as T;
       }
