@@ -5,6 +5,8 @@ import { ClinicsService, type Clinic } from "@/api/services/clinicsService";
 import { SpecialitiesService, type Speciality } from "@/api/services/specialitiesService";
 import { DoctorsGrid, type DoctorsQuery } from "./components/DoctorsGrid";
 import { DoctorsFiltersSkeleton } from "./components/DoctorsFiltersSkeleton";
+import { InputField } from "../UI/forms/InputField";
+import { SelectField } from "../UI/forms/SelectField";
 
 export function DoctorsDirectory() {
   const [searchInput, setSearchInput] = useState("");
@@ -74,51 +76,33 @@ export function DoctorsDirectory() {
           <DoctorsFiltersSkeleton />
         ) : (
           <div className="grid gap-3 md:grid-cols-3">
-            <label className="md:col-span-3 flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-foreground">Search doctor</span>
-              <input
-                type="search"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by first or last name"
-                className="rounded-xl border border-border bg-background px-3 py-2 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-soft"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-foreground">Clinic</span>
-              <select
-                value={selectedClinicId}
-                onChange={(e) => setSelectedClinicId(e.target.value)}
-                disabled={loadingFilters}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-soft disabled:opacity-60"
-              >
-                <option value="">All clinics</option>
-                {clinics.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.clinicName}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-foreground">Speciality</span>
-              <select
-                value={selectedSpecialityId}
-                onChange={(e) => setSelectedSpecialityId(e.target.value)}
-                disabled={loadingFilters}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-soft disabled:opacity-60"
-              >
-                <option value="">All specialities</option>
-                {specialities.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.specialityName}
-                  </option>
-                ))}
-              </select>
-            </label>
-
+            <InputField
+              label="Search Doctor"
+              name="search"
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by first or last name"
+              className=""
+            />
+            <SelectField
+              label="Clinic"
+              name="clinicId"
+              value={selectedClinicId}
+              onChange={(value) => setSelectedClinicId(value)}
+              placeholder="Select a clinic"
+              disabled={loadingFilters}
+              options={clinics.map((c) => ({ value: String(c.id), label: c.clinicName }))}
+            />
+            <SelectField
+              label="Speciality"
+              name="specialityId"
+              value={selectedSpecialityId}
+              onChange={(value) => setSelectedSpecialityId(value)}
+              placeholder="Select a speciality"
+              disabled={loadingFilters}
+              options={specialities.map((s) => ({ value: String(s.id), label: s.specialityName }))}
+            />
             <div className="flex items-end">
               <button
                 type="button"

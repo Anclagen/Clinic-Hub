@@ -5,6 +5,7 @@ import { ClinicsService, type Clinic } from "@/api/services/clinicsService";
 import { ClinicCard } from "../components/ClinicCard";
 import { ClinicsGridSkeleton } from "./ClinicsGridSkeleton";
 import { ClinicsSearchSkeleton } from "./ClinicsSearchSkeleton";
+import { InputField } from "@/features/UI/forms/InputField";
 
 export function ClinicsDirectory() {
   const [searchInput, setSearchInput] = useState("");
@@ -67,16 +68,15 @@ export function ClinicsDirectory() {
         {showSearchSkeleton ? (
           <ClinicsSearchSkeleton />
         ) : (
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-foreground">Search clinic</span>
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Search by clinic name"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-soft"
-            />
-          </label>
+          <InputField
+            label="Search Clinic"
+            name="search"
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by clinic name"
+            className="rounded-xl border border-border bg-background px-3 py-2 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-soft"
+          />
         )}
       </section>
 

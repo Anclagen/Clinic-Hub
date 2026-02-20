@@ -33,11 +33,8 @@ export const InputField = React.forwardRef<HTMLInputElement, Props>(
     };
 
     return (
-      <div className="space-y-1">
-        <label htmlFor={inputId} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-
+      <label htmlFor={inputId} className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-foreground">{label}</span>
         <input
           ref={ref}
           id={inputId}
@@ -56,7 +53,7 @@ export const InputField = React.forwardRef<HTMLInputElement, Props>(
             {error}
           </p>
         ) : null}
-      </div>
+      </label>
     );
   },
 );
