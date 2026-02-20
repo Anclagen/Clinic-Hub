@@ -55,6 +55,7 @@ namespace Backend.Controllers
             CategoryId = d.CategoryId,
             CategoryName = d.Category.CategoryName,
             Duration = d.DurationMinutes,
+            StartAt = d.StartAt,
             ClinicId = d.ClinicId,
             ClinicName = d.Clinic.ClinicName,
             DoctorId = d.DoctorId,

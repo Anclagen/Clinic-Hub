@@ -51,6 +51,11 @@ https://dev.to/eidellev/handling-broken-images-in-react-4oo2
 Heart rate animation
 https://github.com/Hona-08/Heart-rate-monitor-Pure-CSS-Animation
 
+swagger issues dotnet 10
+https://stackoverflow.com/questions/79834574/authentication-not-working-in-swagger-with-net-10
+https://github.com/dotnet/aspnetcore/issues/64524
+https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/master/docs/configure-and-customize-swaggergen.md#add-security-definitions-and-requirements-for-bearer-authentication
+
 PII
 _Based on course material defining non-sensitive PII as publicly available demographic information (including gender and religion), guest users are permitted to store a limited subset of non-sensitive PII. For guest bookings, only first name, last name, email, and optionally birthdate, gender, and religion are stored. Sensitive PII such as government identifiers, tax numbers, insurance numbers, and authentication credentials are restricted to registered patients and never stored for guest users._
 
