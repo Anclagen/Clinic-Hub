@@ -39,3 +39,21 @@ public class BookedTimeSlotDTO
   public DateTime StartAt { get; set; }
   public DateTime EndAt { get; set; }
 }
+
+public sealed class AppointmentQueryDTO
+{
+  public int? ClinicId { get; init; }
+  public Guid? DoctorId { get; init; }
+  public Guid? PatientId { get; init; }
+
+  public DateTime? From { get; init; }
+  public DateTime? To { get; init; }
+
+  public string? Status { get; init; }
+
+  public int Page { get; init; } = 1;
+  public int PageSize { get; init; } = 20;
+
+  public string SortBy { get; init; } = "startAt";
+  public string SortDir { get; init; } = "asc"; // "asc" | "desc"
+}

@@ -1,0 +1,18 @@
+{
+  "JwtSettings": {
+    "SecretKey": " MySecretKeyasdfqwerty123456789abcdefghij",
+    "Issuer": "MyIssuer",
+    "Audience": "MyAudience",
+    "ExpiryMinutes": 60
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "server=localhost;database=exam_project_2;user=root;password=password123"
+  }
+}

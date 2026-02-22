@@ -27,6 +27,82 @@ namespace Backend.Controllers
     /// <returns>A list of appointments</returns>
     /// <response code="500">Something went wrong server side.</response>
     [HttpGet]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(PagedResponseDTO<AppointmentResponseDTO>), 200)]
+    public async Task<IActionResult> GetAppointments([FromQuery] AppointmentQueryDTO q)
+    {
+      var page = Math.Max(q.Page, 1);
+      var pageSize = Math.Clamp(q.PageSize, 1, 100);
+
+      IQueryable<Appointment> query = _dataContext.Appointments.AsNoTracking();
+
+      if (q.PatientId is Guid pid)
+        query = query.Where(a => a.PatientId == pid);
+
+      if (q.DoctorId is Guid did)
+        query = query.Where(a => a.DoctorId == did);
+
+      if (q.ClinicId is int cid)
+        query = query.Where(a => a.ClinicId == cid);
+
+      if (q.From is DateTime from)
+        query = query.Where(a => a.StartAt >= from);
+
+      if (q.To is DateTime to)
+        query = query.Where(a => a.StartAt < to);
+
+      var total = await query.CountAsync();
+
+      var sortBy = (q.SortBy ?? "startAt").Trim().ToLowerInvariant();
+      var sortDesc = string.Equals(q.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
+
+      query = sortBy switch
+      {
+        "startat" => sortDesc ? query.OrderByDescending(a => a.StartAt) : query.OrderBy(a => a.StartAt),
+        _ => sortDesc ? query.OrderByDescending(a => a.StartAt) : query.OrderBy(a => a.StartAt),
+      };
+
+      query = query.Skip((page - 1) * pageSize).Take(pageSize);
+
+      var data = await query
+        .Select(a => new AppointmentResponseDTO
+        {
+          Id = a.Id,
+          PatientId = a.PatientId,
+          Firstname = a.Patient.Firstname,
+          Lastname = a.Patient.Lastname,
+          DateOfBirth = a.Patient.DateOfBirth,
+          ClinicId = a.ClinicId,
+          ClinicName = a.Clinic.ClinicName,
+          DoctorId = a.DoctorId,
+          DoctorName = a.Doctor.Firstname + " " + a.Doctor.Lastname,
+          CategoryId = a.CategoryId,
+          CategoryName = a.Category.CategoryName,
+          Duration = a.DurationMinutes,
+          StartAt = a.StartAt,
+        })
+        .ToListAsync();
+
+      return Ok(new PagedResponseDTO<AppointmentResponseDTO>
+      {
+        Data = data,
+        Pagination = new PaginationDTO
+        {
+          Page = page,
+          PageSize = pageSize,
+          Total = total,
+          TotalPages = (int)Math.Ceiling(total / (double)pageSize),
+        }
+      });
+    }
+
+
+    /// <summary>
+    /// Retrieves all a patients appointments.
+    /// </summary>
+    /// <returns>A list of appointments</returns>
+    /// <response code="500">Something went wrong server side.</response>
+    [HttpGet("me")]
     [Authorize]
     [ProducesResponseType(typeof(PagedResponseDTO<AppointmentResponseDTO>), 200)]
     public async Task<IActionResult> GetAppointments(
@@ -34,12 +110,17 @@ namespace Backend.Controllers
     [FromQuery] int pageSize = 20
 )
     {
-      var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
       page = Math.Max(page, 1);
       pageSize = Math.Clamp(pageSize, 1, 100);
 
-      var query = _dataContext.Appointments.AsNoTracking().AsQueryable();
-      query = query.Where(a => a.PatientId.ToString() == sub);
+      var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+      if (!Guid.TryParse(sub, out var patientId))
+        return Unauthorized();
+
+      var query = _dataContext.Appointments
+        .AsNoTracking()
+        .Where(a => a.PatientId == patientId);
       var total = await query.CountAsync();
       var data = await query
           .OrderBy(d => d.StartAt)
