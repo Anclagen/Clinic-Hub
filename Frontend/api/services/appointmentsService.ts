@@ -74,4 +74,11 @@ export const AppointmentsService = {
       auth: true,
       body: payload,
     }),
+
+  cancel: (id: string) =>
+    api({
+      method: "DELETE",
+      path: `/appointments/${id}`,
+      auth: true,
+    }),
 };

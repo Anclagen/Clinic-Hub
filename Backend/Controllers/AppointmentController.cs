@@ -526,39 +526,45 @@ namespace Backend.Controllers
     //   return NoContent();
     // }
 
-    // /// <summary>
-    // /// Deletes a appointment
-    // /// </summary>
-    // /// <param name="Id">Appointment ID</param>
-    // /// <response code="204">Confirms deletion with status code.</response>
-    // /// <response code="401">If you lack an jwt token in your request headers</response>
-    // /// <response code="404">If the appointment can't be found</response>
-    // /// <response code="500">Something went wrong server side.</response>
-    // [HttpDelete("{Id}")]
-    // [Authorize]
-    // [ProducesResponseType(StatusCodes.Status204NoContent)]
-    // [ProducesResponseType(typeof(ApiErrorDTO), 404)]
-    // public async Task<IActionResult> DeleteAppointment(Guid Id)
-    // {
-    //   var exists = await _dataContext.Appointments.AnyAsync(d => d.Id == Id);
-    //   if (!exists)
-    //     return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Appointment with id {Id} was not found." });
+    /// <summary>
+    /// Deletes a appointment
+    /// </summary>
+    /// <param name="Id">Appointment ID</param>
+    /// <response code="204">Confirms deletion with status code.</response>
+    /// <response code="401">If you lack an jwt token in your request headers</response>
+    /// <response code="404">If the appointment can't be found</response>
+    /// <response code="500">Something went wrong server side.</response>
+    [HttpDelete("{Id}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
+    [ProducesResponseType(typeof(ApiErrorDTO), 409)]
+    public async Task<IActionResult> DeleteAppointment(Guid Id)
+    {
+      var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+      if (!Guid.TryParse(sub, out var patientId))
+        return Unauthorized();
 
-    //   var hasAppointments = await _dataContext.Appointments.AnyAsync(a => a.AppointmentId == Id);
-    //   if (hasAppointments)
-    //     return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete appointment because they have appointments." });
+      var appointment = await _dataContext.Appointments
+        .FirstOrDefaultAsync(a => a.Id == Id && a.PatientId == patientId);
 
-    //   _dataContext.Appointments.Remove(new Appointment { Id = Id });
+      if (appointment is null)
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Appointment with id {Id} was not found." });
 
-    //   try
-    //   {
-    //     await _dataContext.SaveChangesAsync();
-    //     return NoContent();
-    //   }
-    //   catch (DbUpdateException)
-    //   {
-    //     return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete appointment because it is referenced by other records." });
-    //   }
-    // }
+
+      if (appointment.StartAt <= DateTime.UtcNow)
+        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Past appointments cannot be deleted." });
+
+      try
+      {
+        _dataContext.Appointments.Remove(appointment);
+        await _dataContext.SaveChangesAsync();
+        return NoContent();
+      }
+      catch (DbUpdateException)
+      {
+        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete appointment because it is referenced by other records." });
+      }
+    }
   }
 }

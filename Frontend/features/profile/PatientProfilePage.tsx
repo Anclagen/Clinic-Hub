@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { SubmitEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InputField } from "@/features/UI/forms/InputField";
 import {
@@ -80,6 +80,7 @@ export default function PatientProfilePage() {
   const [form, setForm] = useState<ProfileFormState>(defaultForm);
   const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
   const [showOlderAppointments, setShowOlderAppointments] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -148,7 +149,7 @@ export default function PatientProfilePage() {
     if (saveMessage) setSaveMessage(null);
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const patientId = resolveCurrentPatientId();
@@ -237,117 +238,141 @@ export default function PatientProfilePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-foreground">Personal Details</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <InputField
-              label="First Name"
-              name="firstname"
-              value={form.firstname}
-              onChange={(event) => setField("firstname", event.target.value)}
-            />
-            <InputField
-              label="Last Name"
-              name="lastname"
-              value={form.lastname}
-              onChange={(event) => setField("lastname", event.target.value)}
-            />
-            <InputField
-              label="Email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={(event) => setField("email", event.target.value)}
-            />
-            <InputField
-              label="Date of Birth"
-              name="dateOfBirth"
-              type="date"
-              value={form.dateOfBirth}
-              onChange={(event) => setField("dateOfBirth", event.target.value)}
-            />
-          </div>
+          <fieldset disabled={!editing || saving}>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <InputField
+                label="First Name"
+                name="firstname"
+                value={form.firstname}
+                onChange={(event) => setField("firstname", event.target.value)}
+                className="disabled:opacity-80"
+              />
+              <InputField
+                label="Last Name"
+                name="lastname"
+                value={form.lastname}
+                onChange={(event) => setField("lastname", event.target.value)}
+                className="disabled:opacity-80"
+              />
+              <InputField
+                label="Email"
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={(event) => setField("email", event.target.value)}
+                className="disabled:opacity-80"
+              />
+              <InputField
+                label="Date of Birth"
+                name="dateOfBirth"
+                type="date"
+                value={form.dateOfBirth}
+                onChange={(event) => setField("dateOfBirth", event.target.value)}
+                className="disabled:opacity-80"
+              />
+            </div>
+          </fieldset>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-foreground">Additional Information</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <InputField
-              label="Gender"
-              name="gender"
-              value={form.gender}
-              onChange={(event) => setField("gender", event.target.value)}
-            />
-            <InputField
-              label="Religion"
-              name="religion"
-              value={form.religion}
-              onChange={(event) => setField("religion", event.target.value)}
-            />
-            <label className="md:col-span-2 flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-foreground">Address</span>
-              <textarea
-                name="address"
-                value={form.address}
-                onChange={(event) => setField("address", event.target.value)}
-                rows={3}
-                className="w-full rounded-[var(--radius-lg)] border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft"
+          <fieldset disabled={!editing || saving}>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <InputField
+                label="Gender"
+                name="gender"
+                value={form.gender}
+                onChange={(event) => setField("gender", event.target.value)}
+                className="disabled:opacity-80"
               />
-            </label>
-            <InputField
-              label="Driver License Number"
-              name="driverLicenseNumber"
-              value={form.driverLicenseNumber}
-              onChange={(event) => setField("driverLicenseNumber", event.target.value)}
-              autoComplete="off"
-            />
-            <InputField
-              label="Medical Insurance Member Number"
-              name="medicalInsuranceMemberNumber"
-              value={form.medicalInsuranceMemberNumber}
-              onChange={(event) => setField("medicalInsuranceMemberNumber", event.target.value)}
-              autoComplete="off"
-            />
-            <InputField
-              label="Tax Number"
-              name="taxNumber"
-              value={form.taxNumber}
-              onChange={(event) => setField("taxNumber", event.target.value)}
-              autoComplete="off"
-            />
-            <InputField
-              label="Social Security Number"
-              name="socialSecurityNumber"
-              value={form.socialSecurityNumber}
-              onChange={(event) => setField("socialSecurityNumber", event.target.value)}
-              autoComplete="off"
-            />
-          </div>
+              <InputField
+                label="Religion"
+                name="religion"
+                value={form.religion}
+                onChange={(event) => setField("religion", event.target.value)}
+                className="disabled:opacity-80"
+              />
+              <label className="md:col-span-2 flex flex-col gap-1.5 text-sm">
+                <span className="font-medium text-foreground">Address</span>
+                <textarea
+                  name="address"
+                  value={form.address}
+                  onChange={(event) => setField("address", event.target.value)}
+                  rows={3}
+                  className="w-full rounded-[var(--radius-lg)] border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft"
+                />
+              </label>
+              <InputField
+                label="Driver License Number"
+                name="driverLicenseNumber"
+                value={form.driverLicenseNumber}
+                onChange={(event) => setField("driverLicenseNumber", event.target.value)}
+                autoComplete="off"
+                className="disabled:opacity-80"
+              />
+              <InputField
+                label="Medical Insurance Member Number"
+                name="medicalInsuranceMemberNumber"
+                value={form.medicalInsuranceMemberNumber}
+                onChange={(event) => setField("medicalInsuranceMemberNumber", event.target.value)}
+                autoComplete="off"
+                className="disabled:opacity-80"
+              />
+              <InputField
+                label="Tax Number"
+                name="taxNumber"
+                value={form.taxNumber}
+                onChange={(event) => setField("taxNumber", event.target.value)}
+                autoComplete="off"
+                className="disabled:opacity-80"
+              />
+              <InputField
+                label="Social Security Number"
+                name="socialSecurityNumber"
+                value={form.socialSecurityNumber}
+                onChange={(event) => setField("socialSecurityNumber", event.target.value)}
+                autoComplete="off"
+                className="disabled:opacity-80"
+              />
+            </div>
+            {editing ? (
+              <div className="mt-6 flex justify-between">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Saving..." : "Save Profile"}
+                </button>
 
-          <div className="mt-6">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save Profile"}
-            </button>
-          </div>
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="inline-flex rounded-xl bg-secondary px-5 py-2.5 ms-5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => setEditing(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+          </fieldset>
+          {!editing ? (
+            <div className="mt-6">
+              <button
+                type="button"
+                className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => setEditing(true)}
+              >
+                Update Profile
+              </button>
+            </div>
+          ) : null}
         </section>
       </form>
 
       <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 text-wrap">
           <h2 className="text-xl font-semibold text-foreground">Appointments</h2>
-          {pastAppointments.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowOlderAppointments((prev) => !prev)}
-              className="rounded-xl border border-secondary px-4 py-2 text-sm font-medium text-secondary transition hover:bg-secondary-soft"
-            >
-              {showOlderAppointments
-                ? "Hide older appointments"
-                : `Show older appointments (${pastAppointments.length})`}
-            </button>
-          ) : null}
         </div>
 
         <div className="mt-4 space-y-3">
@@ -361,7 +386,19 @@ export default function PatientProfilePage() {
             ))
           )}
         </div>
-
+        {pastAppointments.length > 0 ? (
+          <div className="mt-5 text-center">
+            <button
+              type="button"
+              onClick={() => setShowOlderAppointments((prev) => !prev)}
+              className="rounded-xl border border-secondary px-4 py-2 text-sm font-medium text-secondary transition hover:bg-secondary-soft"
+            >
+              {showOlderAppointments
+                ? "Hide older appointments"
+                : `Show older appointments (${pastAppointments.length})`}
+            </button>
+          </div>
+        ) : null}
         {showOlderAppointments ? (
           <div className="mt-6">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
