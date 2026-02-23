@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function HomeCtaSection() {
   return (
-    <section className="rounded-3xl border border-border bg-card/90 p-6 shadow-sm backdrop-blur-sm">
+    <section className="rounded-3xl border border-border bg-background/80 p-6 shadow-sm backdrop-blur-sm my-4">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="mt-1 text-2xl font-semibold text-foreground">

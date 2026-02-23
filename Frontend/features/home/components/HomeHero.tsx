@@ -4,7 +4,7 @@ import Link from "next/link";
 export function HomeHero() {
   return (
     <section className="relative overflow-hidden rounded-3xl border border-border shadow-air">
-      <div className="absolute inset-0 bg-[url('/images/ui/banner_background.jpg')] bg-cover bg-center" />
+      <div className="absolute inset-0 bg-[url('/images/ui/blue_banner_image.jpg')] bg-cover bg-center" />
       <div className="absolute inset-0 bg-gradient-to-r from-white/92 via-white/88 to-white/25 dark:from-slate-950/88 dark:via-slate-900/80 dark:to-slate-900/35" />
       <div className="absolute -left-10 top-10 h-28 w-28 rounded-full bg-primary/10 blur-2xl" />
       <div className="absolute bottom-4 right-20 h-36 w-36 rounded-full bg-secondary/10 blur-2xl" />

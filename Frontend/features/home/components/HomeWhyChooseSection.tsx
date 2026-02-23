@@ -15,8 +15,8 @@ const highlights = [
 
 export function HomeWhyChooseSection() {
   return (
-    <section>
-      <div className="rounded-3xl border border-border bg-card/90 p-6 shadow-sm backdrop-blur-sm">
+    <section className="my-4">
+      <div className="my-4 rounded-3xl border border-border p-6 shadow-sm bg-card/50 backdrop-blur-sm">
         <h2 className="mt-2 text-2xl font-semibold text-foreground">
           Booking designed to feel simple and reliable
         </h2>
@@ -25,11 +25,11 @@ export function HomeWhyChooseSection() {
           appointment slot.
         </p>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-5">
           {highlights.map((item, index) => (
             <div
               key={item.title}
-              className="flex items-start gap-3 rounded-2xl border border-border bg-background/60 p-4"
+              className="flex items-start gap-3 rounded-2xl border border-border bg-background/60 p-4 mb-4"
             >
               <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
                 {index + 1}

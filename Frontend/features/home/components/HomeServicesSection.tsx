@@ -27,7 +27,7 @@ const services = [
 
 export function HomeServicesSection() {
   return (
-    <section className="rounded-3xl border border-border bg-card/90 p-6 shadow-sm backdrop-blur-sm">
+    <section className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm backdrop-blur-sm">
       <div className="mb-5 flex flex-col gap-2">
         <h2 className="text-2xl font-semibold text-foreground">Care options patients use most</h2>
         <p className="max-w-3xl text-sm leading-6 text-muted">
