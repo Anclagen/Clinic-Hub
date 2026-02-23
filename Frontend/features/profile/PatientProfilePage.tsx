@@ -70,6 +70,7 @@ function toErrorMessage(error: unknown, fallback: string): string {
 export default function PatientProfilePage() {
   const router = useRouter();
   const token = useAuthStore((s) => s.token);
+  const hasHydrated = useAuthStore((s) => s.hydrated);
   const logout = useAuthStore((s) => s.logout);
   const setProfile = useAuthStore((s) => s.setProfile);
 
@@ -83,6 +84,8 @@ export default function PatientProfilePage() {
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
+    console.log(hasHydrated);
+    if (!hasHydrated) return;
     if (!token) {
       router.replace("/auth/login");
       return;
@@ -127,7 +130,7 @@ export default function PatientProfilePage() {
     return () => {
       active = false;
     };
-  }, [logout, router, token]);
+  }, [logout, router, token, hasHydrated]);
 
   const sortedAppointments = useMemo(() => {
     return [...appointments].sort(

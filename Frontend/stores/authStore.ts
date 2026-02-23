@@ -21,6 +21,7 @@ type AuthState = {
     dateOfBirth?: string | null;
   }) => void;
   logout: () => void;
+  setRehydrateError: (error: string | null) => void;
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -36,6 +37,7 @@ export const useAuthStore = create<AuthState>()(
       rehydrateError: null,
 
       setHydrated: (hydrated) => set({ hydrated }),
+      setRehydrateError: (rehydrateError) => set({ rehydrateError }),
 
       setLogin: (details) =>
         set({
@@ -46,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
           email: details.email,
           dateOfBirth: details.dateOfBirth,
         }),
+
       setProfile: (details) =>
         set((state) => ({
           id: details.id ?? state.id,
@@ -67,7 +70,6 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-store",
-
       partialize: (state) => ({
         token: state.token,
         id: state.id,
@@ -76,12 +78,9 @@ export const useAuthStore = create<AuthState>()(
         email: state.email,
         dateOfBirth: state.dateOfBirth,
       }),
-
       onRehydrateStorage: () => (state, error) => {
-        useAuthStore.setState({
-          hydrated: true,
-          rehydrateError: error ? String(error) : null,
-        });
+        state?.setHydrated(true);
+        state?.setRehydrateError(error ? String(error) : null);
       },
     },
   ),
