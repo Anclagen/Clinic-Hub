@@ -269,7 +269,7 @@ export default function BookingPage() {
 
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-foreground">Book an Appointment</h2>
+      <h2 className="text-2xl font-semibold text-foreground">Book an Appointment</h2>
 
       {error ? (
         <div className="mt-3 rounded-xl border border-error bg-error-soft px-4 py-3 text-sm text-error">
