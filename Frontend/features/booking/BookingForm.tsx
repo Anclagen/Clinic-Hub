@@ -16,6 +16,7 @@ import { isApiError, getUnknownMessage } from "@/api/errors";
 import { parseISO } from "date-fns";
 
 import { BookingCalendar, type AppointmentRange } from "./components/BookingCalendar";
+import { BookingCalendarSkeleton } from "./components/BookingCalendarSkeleton";
 
 type ClinicOption = { id: number; clinicName: string };
 
@@ -62,6 +63,7 @@ export default function BookingPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [bookingFetchFailed, setBookingFetchFailed] = useState(false);
 
   const [form, setForm] = useState<FormState>(defaultForm);
   const [bookings, setBookings] = useState<AppointmentRange[]>([]);
@@ -166,22 +168,22 @@ export default function BookingPage() {
 
   const appointmentDurationMinutes = selectedCategory?.defaultDuration ?? 15;
 
-  // when category changes, clear appointment selection (duration affects slots)
   useEffect(() => {
     setForm((prev) => ({ ...prev, appointmentStartAt: "" }));
   }, [appointmentDurationMinutes]);
 
-  // fetch bookings when doctor changes (and optionally when category changes)
   useEffect(() => {
     if (!form.doctorId || !selectedDate) {
       setBookings([]);
+      setBookingFetchFailed(false);
       return;
     }
-    const safeSelectedDate = selectedDate; //....annoying compiler
+    const safeSelectedDate = selectedDate;
     let active = true;
 
     async function loadBookings() {
       setLoadingBookings(true);
+      setBookingFetchFailed(false);
       setError(null);
 
       try {
@@ -191,15 +193,14 @@ export default function BookingPage() {
         const to = toDate.toISOString();
 
         const result = await AppointmentsService.bookedTimes(form.doctorId, from, to);
-
         if (active) setBookings(result ?? []);
       } catch (e) {
         if (active) {
           setBookings([]);
-          setError(e instanceof Error ? e.message : "Failed to load bookings.");
+          setBookingFetchFailed(true); // <--- Triggers the UI lock
+          setError(e instanceof Error ? e.message : "Failed to load availability.");
         }
       } finally {
-        console.log(bookings);
         if (active) setLoadingBookings(false);
       }
     }
@@ -358,36 +359,31 @@ export default function BookingPage() {
         />
 
         <div className="md:col-span-2">
-          <div className="mb-2 text-sm text-muted">
-            {loadingBookings ? "Loading booked times..." : ""}
-          </div>
+          {!form.doctorId || loadingDoctors ? (
+            <BookingCalendarSkeleton />
+          ) : (
+            <>
+              <div className="mb-2 text-sm text-muted">&nbsp;</div>
 
-          <BookingCalendar
-            loadingBookings={loadingBookings}
-            value={form.appointmentStartAt}
-            durationMinutes={appointmentDurationMinutes}
-            booked={bookings}
-            onChange={handleCalendarChange}
-            onDateChange={setSelectedDate}
-            selectedDate={selectedDate}
-            dayStartHour={appointmentStart}
-            dayEndHour={appointmentEnd}
-            intervalMinutes={appointmentInterval}
-          />
+              <BookingCalendar
+                loadingBookings={loadingBookings}
+                hasError={bookingFetchFailed}
+                value={form.appointmentStartAt}
+                durationMinutes={appointmentDurationMinutes}
+                booked={bookings}
+                onChange={handleCalendarChange}
+                onDateChange={setSelectedDate}
+                selectedDate={selectedDate}
+                dayStartHour={appointmentStart}
+                dayEndHour={appointmentEnd}
+                intervalMinutes={appointmentInterval}
+              />
+            </>
+          )}
 
           {errors.appointmentStartAt ? (
             <div className="mt-2 text-sm text-error">{errors.appointmentStartAt}</div>
           ) : null}
-        </div>
-
-        <div className="md:col-span-2">
-          <button
-            type="submit"
-            className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
-            disabled={!form.appointmentStartAt}
-          >
-            Confirm booking
-          </button>
         </div>
       </form>
     </section>
