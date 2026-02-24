@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { parseISO } from "date-fns";
 
 import { InputField } from "../UI/forms/InputField";
 import { SelectField } from "../UI/forms/SelectField";
@@ -13,7 +14,6 @@ import { AppointmentsService } from "@/api/services/appointmentsService";
 
 import { useAuthStore } from "@/stores/authStore";
 import { isApiError, getUnknownMessage } from "@/api/errors";
-import { parseISO } from "date-fns";
 
 import { BookingCalendar, type AppointmentRange } from "./components/BookingCalendar";
 import { BookingCalendarSkeleton } from "./components/BookingCalendarSkeleton";
@@ -27,7 +27,7 @@ type FormState = {
   clinicId: string;
   categoryId: string;
   doctorId: string;
-  appointmentStartAt: string; // ISO string (UTC) coming from BookingCalendar
+  appointmentStartAt: string;
 };
 
 const defaultForm: FormState = {
@@ -88,12 +88,10 @@ export default function BookingPage() {
     didPrefill.current = true;
   }, [firstname, lastname, dateOfBirth]);
 
-  // single field setter (stable)
   const setField = useCallback((key: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // load clinics + categories
   useEffect(() => {
     let active = true;
 
@@ -125,7 +123,6 @@ export default function BookingPage() {
     };
   }, []);
 
-  // load doctors when clinic changes
   useEffect(() => {
     if (!form.clinicId) {
       setDoctors([]);
@@ -285,6 +282,7 @@ export default function BookingPage() {
           onChange={(event) => setField("firstname", event.target.value)}
           error={errors.firstName}
           placeholder="e.g. Jane"
+          disabled={firstname ? true : false}
         />
 
         <InputField
@@ -294,6 +292,7 @@ export default function BookingPage() {
           onChange={(event) => setField("lastname", event.target.value)}
           error={errors.lastName}
           placeholder="e.g. Doe"
+          disabled={lastname ? true : false}
         />
 
         <InputField
@@ -303,6 +302,7 @@ export default function BookingPage() {
           value={form.dateOfBirth}
           onChange={(event) => setField("dateOfBirth", event.target.value)}
           error={errors.dateOfBirth}
+          disabled={dateOfBirth ? true : false}
         />
 
         <SelectField
@@ -384,6 +384,15 @@ export default function BookingPage() {
           {errors.appointmentStartAt ? (
             <div className="mt-2 text-sm text-error">{errors.appointmentStartAt}</div>
           ) : null}
+        </div>
+        <div className="md:col-span-2">
+          <button
+            type="submit"
+            className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+            disabled={!form.appointmentStartAt}
+          >
+            Confirm booking
+          </button>
         </div>
       </form>
     </section>
