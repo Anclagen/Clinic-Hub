@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Backend.Data;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using FluentValidation;
+using Backend.Extensions;
 
 namespace Backend.Controllers
 {
@@ -12,7 +14,7 @@ namespace Backend.Controllers
   [Produces("application/json")]
   [Tags("Appointment")]
   [ApiController]
-  public class AppointmentController : ControllerBase
+  public class AppointmentController : BaseApiController
   {
     private readonly DataContext _dataContext;
 
@@ -45,11 +47,44 @@ namespace Backend.Controllers
       if (q.ClinicId is int cid)
         query = query.Where(a => a.ClinicId == cid);
 
-      if (q.From is DateTime from)
-        query = query.Where(a => a.StartAt >= from);
+      if (q.From.HasValue)
+      {
+        var from = q.From.Value;
 
-      if (q.To is DateTime to)
+        if (from.Kind != DateTimeKind.Utc)
+          return BadRequest(new ApiBadRequestErrorDTO
+          {
+            StatusCode = 400,
+            Field = "from",
+            Message = "from must be UTC (Z)."
+          });
+
+        query = query.Where(a => a.StartAt >= from);
+      }
+
+      if (q.To.HasValue)
+      {
+        var to = q.To.Value;
+
+        if (to.Kind != DateTimeKind.Utc)
+          return BadRequest(new ApiBadRequestErrorDTO
+          {
+            StatusCode = 400,
+            Field = "to",
+            Message = "to must be UTC (Z)."
+          });
+
         query = query.Where(a => a.StartAt < to);
+      }
+
+
+      if (q.From.HasValue && q.To.HasValue && q.To.Value <= q.From.Value)
+        return BadRequest(new ApiBadRequestErrorDTO
+        {
+          StatusCode = 400,
+          Field = "to",
+          Message = "to must be greater than from."
+        });
 
       var total = await query.CountAsync();
 
@@ -172,10 +207,10 @@ namespace Backend.Controllers
     public async Task<ActionResult<AppointmentResponseDTO>> GetAppointment(Guid Id)
     {
       var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-      var query = _dataContext.Appointments.AsNoTracking().AsQueryable();
-      query = query.Where(a => a.PatientId.ToString() == sub);
-      var appointment = await query
-          .Where(a => a.Id == Id)
+      if (!Guid.TryParse(sub, out var patientId)) return Unauthorized();
+
+      var appointment = await _dataContext.Appointments.AsNoTracking()
+          .Where(a => a.PatientId == patientId && a.Id == Id)
           .Select(a => new AppointmentResponseDTO
           {
             Id = a.Id,
@@ -189,7 +224,8 @@ namespace Backend.Controllers
             ClinicId = a.ClinicId,
             ClinicName = a.Clinic.ClinicName,
             DoctorId = a.DoctorId,
-            DoctorName = a.Doctor.Firstname + " " + a.Doctor.Lastname
+            DoctorName = a.Doctor.Firstname + " " + a.Doctor.Lastname,
+            StartAt = a.StartAt
           })
           .FirstOrDefaultAsync();
       if (appointment is null)
@@ -207,8 +243,8 @@ namespace Backend.Controllers
     /// Retrieves booked time slots for a doctor inside a date range.
     /// </summary>
     /// <param name="doctorId">Doctor identifier.</param>
-    /// <param name="from">Inclusive range start (UTC/local DateTime).</param>
-    /// <param name="to">Exclusive range end (UTC/local DateTime).</param>
+    /// <param name="from">Inclusive range start (UTC).</param>
+    /// <param name="to">Exclusive range end (UTC).</param>
     /// <response code="200">Returns booked slots for the given doctor and range.</response>
     /// <response code="400">If query parameters are invalid.</response>
     [HttpGet("booked-times")]
@@ -230,6 +266,12 @@ namespace Backend.Controllers
           Message = "doctorId is required."
         });
       }
+
+      if (from.Kind != DateTimeKind.Utc)
+        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "from", Message = "from must be UTC (Z)." });
+
+      if (to.Kind != DateTimeKind.Utc)
+        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "to", Message = "to must be UTC (Z)." });
 
       if (to <= from)
       {
@@ -289,7 +331,8 @@ namespace Backend.Controllers
     ///   "firstname": "Doc",
     ///   "lastname": "Tor",
     ///   "specialityId": 1,
-    ///   "clinicId": 2
+    ///   "clinicId": 2,
+    ///   "startAt": "2026-02-25T21:08:30.000Z"
     /// }
     /// </remarks>
     /// <response code="201">Returns the newly created appointment</response>
@@ -303,8 +346,16 @@ namespace Backend.Controllers
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AppointmentResponseDTO>> AddAppointment([FromBody] CreateAppointmentDTO dto)
+    public async Task<ActionResult<AppointmentResponseDTO>> AddAppointment([FromBody] CreateAppointmentDTO dto,
+    [FromServices] IValidator<CreateAppointmentDTO> validator)
     {
+
+      var result = await validator.ValidateAsync(dto);
+      if (!result.IsValid)
+      {
+        return ValidationBadRequest(result);
+      }
+
       var authHeader = Request.Headers.Authorization.ToString();
       var hasBearer = !string.IsNullOrWhiteSpace(authHeader) &&
                       authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
@@ -335,19 +386,19 @@ namespace Backend.Controllers
         .SingleOrDefaultAsync(x => x.Id == dto.DoctorId);
 
       if (doctor is null)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "DoctorId", Message = $"Doctor with id {dto.DoctorId} was not found." });
+        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "doctorId", Message = $"Doctor with id {dto.DoctorId} was not found." });
 
       var clinic = await _dataContext.Clinics.AsNoTracking()
         .SingleOrDefaultAsync(x => x.Id == dto.ClinicId);
 
       if (clinic is null)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "ClinicId", Message = $"Clinic with id {dto.ClinicId} was not found." });
+        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "clinicId", Message = $"Clinic with id {dto.ClinicId} was not found." });
 
       var category = await _dataContext.Categories.AsNoTracking()
         .SingleOrDefaultAsync(x => x.Id == dto.CategoryId);
 
       if (category is null)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "CategoryId", Message = $"Category with id {dto.CategoryId} was not found." });
+        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "categoryId", Message = $"Category with id {dto.CategoryId} was not found." });
 
       Patient? resolvedPatient = null;
 
@@ -364,18 +415,6 @@ namespace Backend.Controllers
       }
       else
       {
-        if (string.IsNullOrWhiteSpace(dto.Firstname) ||
-            string.IsNullOrWhiteSpace(dto.Lastname) ||
-            dto.DateOfBirth is null)
-        {
-          return BadRequest(new ApiBadRequestErrorDTO
-          {
-            StatusCode = 400,
-            Field = "Firstname, Lastname, DateOfBirth",
-            Message = "A firstname, lastname, and date of birth is required for unregistered patients."
-          });
-        }
-
         resolvedPatient = await _dataContext.Patients.SingleOrDefaultAsync(p =>
           p.IsGuest &&
           !p.IsDeleted &&
@@ -519,6 +558,14 @@ namespace Backend.Controllers
 
     //   if (dto.Lastname is not null)
     //     entity.Lastname = dto.Lastname.Trim();
+
+    //   if (dto.StartAt.Kind != DateTimeKind.Utc)
+    // return BadRequest(new ApiBadRequestErrorDTO
+    //   {
+    //     StatusCode = 400,
+    //     Field = "startAt",
+    //     Message = "startAt must be UTC (Z)."
+    //   });
 
     //   try { await _dataContext.SaveChangesAsync(); }
     //   catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed due to database constraint." }); }

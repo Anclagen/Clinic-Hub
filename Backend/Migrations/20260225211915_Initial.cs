@@ -171,14 +171,15 @@ namespace Backend.Migrations
                 column: "ClinicId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Appointments_DoctorId",
+                name: "IX_Appointments_DoctorId_StartAt",
                 table: "Appointments",
-                column: "DoctorId");
+                columns: new[] { "DoctorId", "StartAt" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Appointments_PatientId",
+                name: "IX_Appointments_PatientId_StartAt",
                 table: "Appointments",
-                column: "PatientId");
+                columns: new[] { "PatientId", "StartAt" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Categories_CategoryName",

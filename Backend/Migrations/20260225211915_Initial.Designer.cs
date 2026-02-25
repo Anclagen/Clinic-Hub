@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20260217210702_Initial")]
+    [Migration("20260225211915_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -52,9 +52,10 @@ namespace Backend.Migrations
 
                     b.HasIndex("ClinicId");
 
-                    b.HasIndex("DoctorId");
+                    b.HasIndex("DoctorId", "StartAt")
+                        .IsUnique();
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("PatientId", "StartAt");
 
                     b.ToTable("Appointments");
                 });

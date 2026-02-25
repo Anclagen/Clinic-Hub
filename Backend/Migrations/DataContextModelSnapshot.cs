@@ -49,9 +49,10 @@ namespace Backend.Migrations
 
                     b.HasIndex("ClinicId");
 
-                    b.HasIndex("DoctorId");
+                    b.HasIndex("DoctorId", "StartAt")
+                        .IsUnique();
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("PatientId", "StartAt");
 
                     b.ToTable("Appointments");
                 });

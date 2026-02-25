@@ -8,6 +8,9 @@ using System.Text;
 using System.Text.Json;
 using Backend.Data.Seeding;
 using Microsoft.OpenApi;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +21,41 @@ builder.Services.AddDbContext<DataContext>(options =>
 });
 builder.Services.AddScoped<AuthService>();
 
-builder.Services.AddControllers();
+// Fluent validation, and convert properties on errors to camel case so it matches frontend
+builder.Services.AddValidatorsFromAssemblyContaining<CreateAppointmentValidator>();
+ValidatorOptions.Global.PropertyNameResolver = (_, member, _) =>
+    member != null ? JsonNamingPolicy.CamelCase.ConvertName(member.Name) : null;
+
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            static string NormalizeKey(string key)
+            {
+                key = key.Replace("$.", "");
+                if (key == "dto") return "body";
+                return JsonNamingPolicy.CamelCase.ConvertName(key);
+            }
+
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => NormalizeKey(kvp.Key),
+                    kvp => kvp.Value!.Errors.Select(x => x.ErrorMessage).ToArray()
+                );
+
+            var errorPayload = new ApiErrorDTO
+            {
+                StatusCode = 400,
+                Message = "Data binding failed.",
+                Errors = errors
+            };
+
+            return new BadRequestObjectResult(errorPayload);
+        };
+    });
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -91,7 +128,6 @@ builder.Services.AddAuthentication(options =>
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
         },
-
         OnForbidden = async context =>
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;

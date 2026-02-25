@@ -57,6 +57,9 @@ namespace Backend.Data
         .HasForeignKey(d => d.ClinicId)
         .OnDelete(DeleteBehavior.Restrict);
 
+      modelBuilder.Entity<Doctor>()
+        .HasIndex(d => d.ClinicId);
+
       modelBuilder.Entity<Appointment>()
         .HasOne(a => a.Patient)
         .WithMany(p => p.Appointments)
@@ -80,6 +83,16 @@ namespace Backend.Data
         .WithMany(c => c.Appointments)
         .HasForeignKey(a => a.ClinicId)
         .OnDelete(DeleteBehavior.Restrict);
+
+      modelBuilder.Entity<Appointment>()
+        .HasIndex(a => new { a.DoctorId, a.StartAt });
+
+      modelBuilder.Entity<Appointment>()
+        .HasIndex(a => new { a.PatientId, a.StartAt });
+
+      modelBuilder.Entity<Appointment>()
+      .HasIndex(a => new { a.DoctorId, a.StartAt })
+      .IsUnique();
     }
   }
 }

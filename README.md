@@ -56,6 +56,11 @@ https://stackoverflow.com/questions/79834574/authentication-not-working-in-swagg
 https://github.com/dotnet/aspnetcore/issues/64524
 https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/master/docs/configure-and-customize-swaggergen.md#add-security-definitions-and-requirements-for-bearer-authentication
 
+validation the great rabbit hole
+https://www.milanjovanovic.tech/blog/functional-error-handling-in-dotnet-with-the-result-pattern
+https://andrewlock.net/handling-web-api-exceptions-with-problemdetails-middleware/
+https://docs.fluentvalidation.net/en/latest/aspnet.html
+
 PII
 _Based on course material defining non-sensitive PII as publicly available demographic information (including gender and religion), guest users are permitted to store a limited subset of non-sensitive PII. For guest bookings, only first name, last name, email, and optionally birthdate, gender, and religion are stored. Sensitive PII such as government identifiers, tax numbers, insurance numbers, and authentication credentials are restricted to registered patients and never stored for guest users._
 

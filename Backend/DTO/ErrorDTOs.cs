@@ -12,8 +12,11 @@ public class ApiBadRequestErrorDTO
 
 public class ApiErrorDTO
 {
-  /// <example>404</example>
   public int StatusCode { get; set; }
-  /// <example>Entity with id 666 was not found</example>
   public string Message { get; set; } = "";
+  public string? Detail { get; set; }
+  public string? Field { get; set; }
+
+  // Only used for validation / multi-field errors
+  public Dictionary<string, string[]>? Errors { get; set; }
 }
