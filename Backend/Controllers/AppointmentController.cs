@@ -6,7 +6,6 @@ using Backend.Data;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using FluentValidation;
-using Backend.Extensions;
 
 namespace Backend.Controllers
 {
@@ -24,128 +23,106 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Retrieves all a patients appointments.
+    /// Retrieves a paged and filtered list of all appointments (Admin only).
     /// </summary>
-    /// <returns>A list of appointments</returns>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Administrative Controls:**
+    /// - **Filtering:** Filter by Patient, Doctor, Clinic, or Date Range.
+    /// - **Sorting:** Supports sorting by `patientname`, `doctorname`, `clinicname`, or `startAt` (default).
+    /// - **Performance:** Uses keyset-adjacent offset paging. Max page size is 100.
+    /// </remarks>
+    /// <param name="q">Query parameters including filters, pagination, and sorting.</param>
+    /// <param name="validator">Injected validator for date ranges and GUID formats.</param>
+    /// <response code="200">Returns a paged wrapper of all appointments matching the criteria.</response>
+    /// <response code="400">Bad Request: Validation failed (e.g., invalid GUID or 'From' date after 'To' date).</response>
+    /// <response code="401">Unauthorized: Token is missing or invalid.</response>
+    /// <response code="403">Forbidden: User does not have the 'Admin' role.</response>
     [HttpGet]
     [Authorize(Roles = "Admin")]
-    [ProducesResponseType(typeof(PagedResponseDTO<AppointmentResponseDTO>), 200)]
-    public async Task<IActionResult> GetAppointments([FromQuery] AppointmentQueryDTO q)
+    [ProducesResponseType(typeof(PagedResponseDTO<AppointmentResponseDTO>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAppointments(
+        [FromQuery] AppointmentQueryDTO q,
+        [FromServices] IValidator<AppointmentQueryDTO> validator)
     {
-      var page = Math.Max(q.Page, 1);
-      var pageSize = Math.Clamp(q.PageSize, 1, 100);
+      // 1. Validate Query Logic
+      var result = await validator.ValidateAsync(q);
+      if (!result.IsValid) return ValidationBadRequest(result);
 
       IQueryable<Appointment> query = _dataContext.Appointments.AsNoTracking();
-
-      if (q.PatientId is Guid pid)
-        query = query.Where(a => a.PatientId == pid);
-
-      if (q.DoctorId is Guid did)
-        query = query.Where(a => a.DoctorId == did);
-
-      if (q.ClinicId is int cid)
-        query = query.Where(a => a.ClinicId == cid);
-
-      if (q.From.HasValue)
-      {
-        var from = q.From.Value;
-
-        if (from.Kind != DateTimeKind.Utc)
-          return BadRequest(new ApiBadRequestErrorDTO
-          {
-            StatusCode = 400,
-            Field = "from",
-            Message = "from must be UTC (Z)."
-          });
-
-        query = query.Where(a => a.StartAt >= from);
-      }
-
-      if (q.To.HasValue)
-      {
-        var to = q.To.Value;
-
-        if (to.Kind != DateTimeKind.Utc)
-          return BadRequest(new ApiBadRequestErrorDTO
-          {
-            StatusCode = 400,
-            Field = "to",
-            Message = "to must be UTC (Z)."
-          });
-
-        query = query.Where(a => a.StartAt < to);
-      }
-
-
-      if (q.From.HasValue && q.To.HasValue && q.To.Value <= q.From.Value)
-        return BadRequest(new ApiBadRequestErrorDTO
-        {
-          StatusCode = 400,
-          Field = "to",
-          Message = "to must be greater than from."
-        });
+      if (q.PatientId.HasValue) query = query.Where(a => a.PatientId == q.PatientId);
+      if (q.DoctorId.HasValue) query = query.Where(a => a.DoctorId == q.DoctorId);
+      if (q.ClinicId.HasValue) query = query.Where(a => a.ClinicId == q.ClinicId);
+      if (q.From.HasValue) query = query.Where(a => a.StartAt >= q.From);
+      if (q.To.HasValue) query = query.Where(a => a.StartAt < q.To);
 
       var total = await query.CountAsync();
 
-      var sortBy = (q.SortBy ?? "startAt").Trim().ToLowerInvariant();
-      var sortDesc = string.Equals(q.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
-
-      query = sortBy switch
+      var isDesc = string.Equals(q.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
+      query = (q.SortBy?.ToLower()) switch
       {
-        "startat" => sortDesc ? query.OrderByDescending(a => a.StartAt) : query.OrderBy(a => a.StartAt),
-        _ => sortDesc ? query.OrderByDescending(a => a.StartAt) : query.OrderBy(a => a.StartAt),
+        "patientname" => isDesc ? query.OrderByDescending(a => a.Patient.Lastname) : query.OrderBy(a => a.Patient.Lastname),
+        "doctorname" => isDesc ? query.OrderByDescending(a => a.Doctor.Lastname) : query.OrderBy(a => a.Doctor.Lastname),
+        "clinicname" => isDesc ? query.OrderByDescending(a => a.Clinic.ClinicName) : query.OrderBy(a => a.Clinic.ClinicName),
+        _ => isDesc ? query.OrderByDescending(a => a.StartAt) : query.OrderBy(a => a.StartAt),
       };
 
-      query = query.Skip((page - 1) * pageSize).Take(pageSize);
-
       var data = await query
-        .Select(a => new AppointmentResponseDTO
-        {
-          Id = a.Id,
-          PatientId = a.PatientId,
-          Firstname = a.Patient.Firstname,
-          Lastname = a.Patient.Lastname,
-          DateOfBirth = a.Patient.DateOfBirth,
-          ClinicId = a.ClinicId,
-          ClinicName = a.Clinic.ClinicName,
-          DoctorId = a.DoctorId,
-          DoctorName = a.Doctor.Firstname + " " + a.Doctor.Lastname,
-          CategoryId = a.CategoryId,
-          CategoryName = a.Category.CategoryName,
-          Duration = a.DurationMinutes,
-          StartAt = a.StartAt,
-        })
-        .ToListAsync();
+          .Skip((q.Page - 1) * q.PageSize)
+          .Take(q.PageSize)
+          .Select(a => new AppointmentResponseDTO
+          {
+            Id = a.Id,
+            PatientId = a.PatientId,
+            Firstname = a.Patient.Firstname,
+            Lastname = a.Patient.Lastname,
+            DateOfBirth = a.Patient.DateOfBirth,
+            ClinicId = a.ClinicId,
+            ClinicName = a.Clinic.ClinicName,
+            DoctorId = a.DoctorId,
+            DoctorName = $"{a.Doctor.Firstname} {a.Doctor.Lastname}",
+            CategoryId = a.CategoryId,
+            CategoryName = a.Category.CategoryName,
+            Duration = a.DurationMinutes,
+            StartAt = a.StartAt,
+          })
+          .ToListAsync();
 
       return Ok(new PagedResponseDTO<AppointmentResponseDTO>
       {
         Data = data,
         Pagination = new PaginationDTO
         {
-          Page = page,
-          PageSize = pageSize,
+          Page = q.Page,
+          PageSize = q.PageSize,
           Total = total,
-          TotalPages = (int)Math.Ceiling(total / (double)pageSize),
+          TotalPages = (int)Math.Ceiling(total / (double)q.PageSize)
         }
       });
     }
 
 
     /// <summary>
-    /// Retrieves all a patients appointments.
+    /// Retrieves a paged list of the authenticated patient's appointments.
     /// </summary>
-    /// <returns>A list of appointments</returns>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Privacy:** Automatically filters by the 'sub' claim in the JWT to ensure patients only see their own data.
+    /// **Default Sort:** Ordered by StartAt (Ascending).
+    /// </remarks>
+    /// <param name="page">The page number (minimum 1).</param>
+    /// <param name="pageSize">Number of items per page (maximum 100).</param>
+    /// <response code="200">Returns a paged wrapper containing the patient's appointments.</response>
+    /// <response code="401">Unauthorized: Valid JWT is required.</response>
     [HttpGet("me")]
     [Authorize]
-    [ProducesResponseType(typeof(PagedResponseDTO<AppointmentResponseDTO>), 200)]
+    [ProducesResponseType(typeof(PagedResponseDTO<AppointmentResponseDTO>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetAppointments(
     [FromQuery] int page = 1,
     [FromQuery] int pageSize = 20
 )
     {
-
       page = Math.Max(page, 1);
       pageSize = Math.Clamp(pageSize, 1, 100);
 
@@ -194,16 +171,20 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Retrieves a appointment by ID.
+    /// Retrieves details for a specific appointment.
     /// </summary>
-    /// <param name="Id">The appointment ID.</param>
-    /// <response code="200">Returns the appointment</response>
-    /// <response code="404">If the appointment is not found</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Security:** /// Only the patient who owns the appointment can access this data. 
+    /// If the appointment belongs to a different user, a 404 is returned to prevent resource enumeration.
+    /// </remarks>
+    /// <param name="Id">The unique GUID of the appointment.</param>
+    /// <response code="200">Returns the full appointment details.</response>
+    /// <response code="401">Unauthorized: Valid JWT token is required.</response>
+    /// <response code="404">Not Found: Appointment doesn't exist or doesn't belong to the authenticated user.</response>
     [HttpGet("{Id}")]
     [Authorize]
-    [ProducesResponseType(typeof(AppointmentResponseDTO), 200)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
+    [ProducesResponseType(typeof(AppointmentResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<AppointmentResponseDTO>> GetAppointment(Guid Id)
     {
       var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
@@ -240,114 +221,76 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Retrieves booked time slots for a doctor inside a date range.
+    /// Retrieves a doctor's booked time slots within a specific date range.
     /// </summary>
-    /// <param name="doctorId">Doctor identifier.</param>
-    /// <param name="from">Inclusive range start (UTC).</param>
-    /// <param name="to">Exclusive range end (UTC).</param>
-    /// <response code="200">Returns booked slots for the given doctor and range.</response>
-    /// <response code="400">If query parameters are invalid.</response>
+    /// <remarks>
+    /// **Purpose:** Used by the frontend calendar to "gray out" unavailable slots.
+    /// 
+    /// **Rules:**
+    /// - **Timezone:** All dates MUST be in UTC (ending with 'Z').
+    /// - **Limit:** The range between 'From' and 'To' cannot exceed 31 days.
+    /// - **Privacy:** Only returns time intervals; no patient data is exposed.
+    /// </remarks>
+    /// <param name="query">The criteria including DoctorId and the UTC date range.</param>
+    /// <param name="validator">Injected validator for range and UTC format checks.</param>
+    /// <response code="200">Returns a list of Start and End times for existing bookings.</response>
+    /// <response code="400">Bad Request: Invalid GUID, non-UTC dates, or range exceeds 31 days.</response>
     [HttpGet("booked-times")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(IEnumerable<BookedTimeSlotDTO>), 200)]
-    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), 400)]
+    [ProducesResponseType(typeof(IEnumerable<BookedTimeSlotDTO>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IEnumerable<BookedTimeSlotDTO>>> GetBookedTimes(
-      [FromQuery] Guid doctorId,
-      [FromQuery] DateTime from,
-      [FromQuery] DateTime to
-    )
+        [FromQuery] GetBookedTimesQuery query,
+        [FromServices] IValidator<GetBookedTimesQuery> validator)
     {
-      if (doctorId == Guid.Empty)
+      var result = await validator.ValidateAsync(query);
+      if (!result.IsValid)
       {
-        return BadRequest(new ApiBadRequestErrorDTO
-        {
-          StatusCode = 400,
-          Field = "doctorId",
-          Message = "doctorId is required."
-        });
-      }
-
-      if (from.Kind != DateTimeKind.Utc)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "from", Message = "from must be UTC (Z)." });
-
-      if (to.Kind != DateTimeKind.Utc)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "to", Message = "to must be UTC (Z)." });
-
-      if (to <= from)
-      {
-        return BadRequest(new ApiBadRequestErrorDTO
-        {
-          StatusCode = 400,
-          Field = "to",
-          Message = "to must be greater than from."
-        });
-      }
-
-      if ((to - from).TotalDays > 31)
-      {
-        return BadRequest(new ApiBadRequestErrorDTO
-        {
-          StatusCode = 400,
-          Field = "to",
-          Message = "Date range cannot exceed 31 days."
-        });
-      }
-
-      var doctorExists = await _dataContext.Doctors.AsNoTracking().AnyAsync(d => d.Id == doctorId);
-      if (!doctorExists)
-      {
-        return BadRequest(new ApiBadRequestErrorDTO
-        {
-          StatusCode = 400,
-          Field = "doctorId",
-          Message = $"Doctor with id {doctorId} was not found."
-        });
+        return ValidationBadRequest(result);
       }
 
       var slots = await _dataContext.Appointments
-        .AsNoTracking()
-        .Where(a =>
-          a.DoctorId == doctorId &&
-          a.StartAt < to &&
-          a.StartAt.AddMinutes(a.DurationMinutes) > from
-        )
-        .OrderBy(a => a.StartAt)
-        .Select(a => new BookedTimeSlotDTO
-        {
-          StartAt = a.StartAt,
-          EndAt = a.StartAt.AddMinutes(a.DurationMinutes)
-        })
-        .ToListAsync();
+              .AsNoTracking()
+              .Where(a =>
+                  a.DoctorId == query.DoctorId &&
+                  a.StartAt < query.To &&
+                  a.StartAt.AddMinutes(a.DurationMinutes) > query.From
+              )
+              .OrderBy(a => a.StartAt)
+              .Select(a => new BookedTimeSlotDTO
+              {
+                StartAt = a.StartAt,
+                EndAt = a.StartAt.AddMinutes(a.DurationMinutes)
+              })
+              .ToListAsync();
 
       return Ok(slots);
     }
 
     /// <summary>
-    /// Creates a appointment
+    /// Books a new appointment.
     /// </summary>
     /// <remarks>
-    /// Sample request:
-    /// {
-    ///   "firstname": "Doc",
-    ///   "lastname": "Tor",
-    ///   "specialityId": 1,
-    ///   "clinicId": 2,
-    ///   "startAt": "2026-02-25T21:08:30.000Z"
-    /// }
+    /// **Behavior:**
+    /// - **Authenticated Users:** If a valid JWT is provided, the appointment is linked to the logged-in user.
+    /// - **Guest Users:** If no token is provided, the system searches for an existing guest profile matching the name and DOB. If none is found, a new guest profile is created.
+    /// - **Validation:** Ensures the doctor belongs to the clinic and that the time slot is currently available.
     /// </remarks>
-    /// <response code="201">Returns the newly created appointment</response>
-    /// <response code="400">If the fullname is null</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="409">Create failed due to database constraint.</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <param name="dto">The appointment details including Patient info (for guests), Doctor, and Schedule.</param>
+    /// <param name="validator">Injected FluentValidator for CreateAppointmentDTO.</param>
+    /// <response code="201">Success: Returns the newly created appointment with full details.</response>
+    /// <response code="400">Bad Request: Validation failed or account is deleted.</response>
+    /// <response code="401">Unauthorized: Session expired or invalid token detected.</response>
+    /// <response code="409">Conflict: The selected time slot is already booked for this doctor.</response>
     [HttpPost]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(AppointmentResponseDTO), 201)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AppointmentResponseDTO>> AddAppointment([FromBody] CreateAppointmentDTO dto,
-    [FromServices] IValidator<CreateAppointmentDTO> validator)
+    [ProducesResponseType(typeof(AppointmentResponseDTO), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AppointmentResponseDTO>> AddAppointment(
+      [FromBody] CreateAppointmentDTO dto,
+      [FromServices] IValidator<CreateAppointmentDTO> validator)
     {
 
       var result = await validator.ValidateAsync(dto);
@@ -382,24 +325,6 @@ namespace Backend.Controllers
         authenticatedPatientId = pid;
       }
 
-      var doctor = await _dataContext.Doctors.AsNoTracking()
-        .SingleOrDefaultAsync(x => x.Id == dto.DoctorId);
-
-      if (doctor is null)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "doctorId", Message = $"Doctor with id {dto.DoctorId} was not found." });
-
-      var clinic = await _dataContext.Clinics.AsNoTracking()
-        .SingleOrDefaultAsync(x => x.Id == dto.ClinicId);
-
-      if (clinic is null)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "clinicId", Message = $"Clinic with id {dto.ClinicId} was not found." });
-
-      var category = await _dataContext.Categories.AsNoTracking()
-        .SingleOrDefaultAsync(x => x.Id == dto.CategoryId);
-
-      if (category is null)
-        return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "categoryId", Message = $"Category with id {dto.CategoryId} was not found." });
-
       Patient? resolvedPatient = null;
 
       if (authenticatedPatientId is not null)
@@ -415,6 +340,7 @@ namespace Backend.Controllers
       }
       else
       {
+        // Search for existing Guest record to avoid duplicates might delete this???
         resolvedPatient = await _dataContext.Patients.SingleOrDefaultAsync(p =>
           p.IsGuest &&
           !p.IsDeleted &&
@@ -470,24 +396,30 @@ namespace Backend.Controllers
         await _dataContext.SaveChangesAsync();
 
         await tx.CommitAsync();
+        var finalAppointment = await _dataContext.Appointments
+          .Include(a => a.Category)
+          .Include(a => a.Doctor)
+          .Include(a => a.Clinic)
+          .Include(a => a.Patient)
+          .FirstAsync(a => a.Id == entity.Id);
 
         var response = new AppointmentResponseDTO
         {
-          Id = entity.Id,
-          PatientId = entity.PatientId,
-          Firstname = resolvedPatient.Firstname,
-          Lastname = resolvedPatient.Lastname,
-          CategoryId = entity.CategoryId,
-          CategoryName = category.CategoryName,
-          DoctorId = entity.DoctorId,
-          DoctorName = $"{doctor.Firstname} {doctor.Lastname}",
-          ClinicId = entity.ClinicId,
-          ClinicName = clinic.ClinicName,
-          StartAt = entity.StartAt,
-          Duration = entity.DurationMinutes,
+          Id = finalAppointment.Id,
+          PatientId = finalAppointment.PatientId,
+          Firstname = finalAppointment.Patient.Firstname,
+          Lastname = finalAppointment.Patient.Lastname,
+          CategoryId = finalAppointment.CategoryId,
+          CategoryName = finalAppointment.Category.CategoryName,
+          DoctorId = finalAppointment.DoctorId,
+          DoctorName = $"{finalAppointment.Doctor.Firstname} {finalAppointment.Doctor.Lastname}",
+          ClinicId = finalAppointment.ClinicId,
+          ClinicName = finalAppointment.Clinic.ClinicName,
+          StartAt = finalAppointment.StartAt,
+          Duration = finalAppointment.DurationMinutes,
         };
 
-        return CreatedAtAction(nameof(GetAppointment), new { Id = response.Id }, response);
+        return CreatedAtAction("GetAppointment", new { Id = entity.Id }, response);
       }
       catch (DbUpdateException)
       {
@@ -497,93 +429,112 @@ namespace Backend.Controllers
     }
 
 
-    // /// <summary>
-    // /// Updates a appointment by its ID.
-    // /// </summary>
-    // /// <remarks>
-    // /// Sample request:
-    // /// {
-    // ///   "firstname": "Doc",
-    // ///   "lastname": "Tor",
-    // ///   "specialityId": 1,
-    // ///   "clinicId": 2
-    // /// }
-    // /// </remarks>
-    // /// <param name="Id">Appointment ID</param>
-    // /// <response code="204">Confirms update with status code.</response>
-    // /// <response code="400">Validation error</response>
-    // /// <response code="401">If you lack an jwt token in your request headers</response>
-    // /// <response code="404">If the appointment can't be found</response>
-    // /// <response code="409">Update failed due to database constraint.</response>
-    // /// <response code="500">Something went wrong server side.</response>
-    // [HttpPut("{Id}")]
-    // [Authorize]
-    // [ProducesResponseType(StatusCodes.Status204NoContent)]
-    // [ProducesResponseType(typeof(ApiErrorDTO), 404)]
-    // [ProducesResponseType(typeof(ApiErrorDTO), 409)]
-    // public async Task<IActionResult> UpdateAppointment(Guid Id, UpdateAppointmentDTO dto)
-    // {
-    //   var entity = await _dataContext.Appointments.FindAsync(Id);
-    //   if (entity == null)
-    //   {
-    //     return NotFound(new ApiErrorDTO
-    //     {
-    //       StatusCode = 404,
-    //       Message = $"Appointment with id {Id} was not found."
-    //     });
-    //   }
-    //   if (dto.SpecialityId is not null)
-    //   {
-    //     var speciality = await _dataContext.Specialities
-    //   .AsNoTracking()
-    //   .FirstOrDefaultAsync(s => s.Id == dto.SpecialityId);
+    /// <summary>
+    /// Updates an existing appointment's schedule or doctor.
+    /// </summary>
+    /// <remarks>
+    /// **Constraints:**
+    /// - **Ownership:** Only the patient who booked the appointment can modify it.
+    /// - **Time Lock:** Modifications are forbidden within 24 hours of the original start time.
+    /// - **Clinic Lock:** The doctor must belong to the same clinic as the original appointment.
+    /// - **Availability:** The new time slot must not overlap with the selected doctor's existing schedule.
+    /// </remarks>
+    /// <param name="id">The unique GUID of the appointment to update.</param>
+    /// <param name="dto">The updated appointment details.</param>
+    /// <param name="validator">Injected FluentValidator for UpdateAppointmentDTO.</param>
+    /// <response code="200">Returns the updated appointment details.</response>
+    /// <response code="400">Bad Request: Validation failed, or 24-hour lock violation.</response>
+    /// <response code="401">Unauthorized: Valid JWT token is required.</response>
+    /// <response code="404">Not Found: Appointment does not exist or user lacks ownership.</response>
+    /// <response code="409">Conflict: The selected doctor is already booked for this time slot.</response>
+    [HttpPut("{id}")]
+    [Authorize]
+    [ProducesResponseType(typeof(AppointmentResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AppointmentResponseDTO>> UpdateAppointment(
+        Guid id,
+        [FromBody] UpdateAppointmentDTO dto,
+        [FromServices] IValidator<UpdateAppointmentDTO> validator)
+    {
+      var validationResult = await validator.ValidateAsync(dto);
+      if (!validationResult.IsValid) return ValidationBadRequest(validationResult);
 
-    //     if (speciality is null) return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "SpecialityId", Message = $"Speciality with id {dto.SpecialityId} was not found." });
+      var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+      if (!Guid.TryParse(sub, out var patientId)) return Unauthorized();
 
-    //     entity.SpecialityId = dto.SpecialityId.Value;
-    //   }
-    //   if (dto.ClinicId is not null)
-    //   {
-    //     var clinic = await _dataContext.Clinics
-    //         .AsNoTracking()
-    //         .FirstOrDefaultAsync(c => c.Id == dto.ClinicId);
+      var appointment = await _dataContext.Appointments
+          .FirstOrDefaultAsync(a => a.Id == id && a.PatientId == patientId);
 
-    //     if (clinic is null) return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "ClinicId", Message = $"Clinic with id {dto.ClinicId} was not found." });
+      if (appointment == null)
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Appointment not found." });
 
-    //     entity.ClinicId = dto.ClinicId.Value;
-    //   }
+      if (appointment.StartAt <= DateTime.UtcNow.AddHours(24))
+        return BadRequest(new ApiErrorDTO { StatusCode = 400, Message = "Appointments cannot be modified within 24 hours of their start time." });
 
-    //   if (dto.Firstname is not null)
-    //     entity.Firstname = dto.Firstname.Trim();
+      var doctorExistsAtClinic = await _dataContext.Doctors
+          .AnyAsync(d => d.Id == dto.DoctorId && d.ClinicId == appointment.ClinicId);
+      if (!doctorExistsAtClinic)
+        return BadRequest(new ApiBadRequestErrorDTO { Field = "DoctorId", Message = "Selected doctor does not practice at the clinic associated with this appointment." });
 
-    //   if (dto.Lastname is not null)
-    //     entity.Lastname = dto.Lastname.Trim();
+      var newEnd = dto.StartAt.AddMinutes(dto.DurationMinutes);
+      var overlaps = await _dataContext.Appointments.AnyAsync(a =>
+          a.Id != id && a.DoctorId == dto.DoctorId &&
+          dto.StartAt < a.StartAt.AddMinutes(a.DurationMinutes) && newEnd > a.StartAt);
 
-    //   if (dto.StartAt.Kind != DateTimeKind.Utc)
-    // return BadRequest(new ApiBadRequestErrorDTO
-    //   {
-    //     StatusCode = 400,
-    //     Field = "startAt",
-    //     Message = "startAt must be UTC (Z)."
-    //   });
+      if (overlaps)
+        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "The selected doctor is already booked for this time slot." });
 
-    //   try { await _dataContext.SaveChangesAsync(); }
-    //   catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed due to database constraint." }); }
+      appointment.DoctorId = dto.DoctorId;
+      appointment.CategoryId = dto.CategoryId;
+      appointment.StartAt = dto.StartAt;
+      appointment.DurationMinutes = dto.DurationMinutes;
+      await _dataContext.SaveChangesAsync();
 
-    //   return NoContent();
-    // }
+      var updatedAppointment = await _dataContext.Appointments
+          .Include(a => a.Category)
+          .Include(a => a.Doctor)
+          .Include(a => a.Clinic)
+          .Include(a => a.Patient)
+          .Select(a => new AppointmentResponseDTO
+          {
+            Id = a.Id,
+            PatientId = a.PatientId,
+            Firstname = a.Patient.Firstname,
+            Lastname = a.Patient.Lastname,
+            CategoryId = a.CategoryId,
+            CategoryName = a.Category.CategoryName,
+            DoctorId = a.DoctorId,
+            DoctorName = $"{a.Doctor.Firstname} {a.Doctor.Lastname}",
+            ClinicId = a.ClinicId,
+            ClinicName = a.Clinic.ClinicName,
+            StartAt = a.StartAt,
+            Duration = a.DurationMinutes
+          })
+          .FirstAsync(a => a.Id == id);
+
+      return Ok(updatedAppointment);
+    }
 
     /// <summary>
-    /// Deletes a appointment
+    /// Cancels and deletes a specific appointment.
     /// </summary>
-    /// <param name="Id">Appointment ID</param>
-    /// <response code="204">Confirms deletion with status code.</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="404">If the appointment can't be found</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Rules:**
+    /// 1. Only the patient who owns the appointment can delete it.
+    /// 2. Appointments cannot be deleted if they are in the past.
+    /// 3. Appointments cannot be deleted within 24 hours of the start time (Cancellation Lock).
+    /// </remarks>
+    /// <param name="Id">The unique GUID of the appointment.</param>
+    /// <response code="204">Appointment successfully deleted.</response>
+    /// <response code="401">Unauthorized: Token is missing or invalid.</response>
+    /// <response code="404">Not Found: Appointment doesn't exist or doesn't belong to the user.</response>
+    /// <response code="409">Conflict: Too late to cancel or database constraint violation.</response>
     [HttpDelete("{Id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiErrorDTO), 401)]
     [ProducesResponseType(typeof(ApiErrorDTO), 404)]
     [ProducesResponseType(typeof(ApiErrorDTO), 409)]
     public async Task<IActionResult> DeleteAppointment(Guid Id)
@@ -596,11 +547,20 @@ namespace Backend.Controllers
         .FirstOrDefaultAsync(a => a.Id == Id && a.PatientId == patientId);
 
       if (appointment is null)
-        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Appointment with id {Id} was not found." });
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Appointment was not found." });
 
 
       if (appointment.StartAt <= DateTime.UtcNow)
         return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Past appointments cannot be deleted." });
+
+      if (appointment.StartAt <= DateTime.UtcNow.AddHours(24))
+      {
+        return Conflict(new ApiErrorDTO
+        {
+          StatusCode = 409,
+          Message = "Appointments cannot be cancelled within 24 hours of the start time."
+        });
+      }
 
       try
       {

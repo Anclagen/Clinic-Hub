@@ -12,6 +12,14 @@ public class CreateAppointmentDTO
   public DateTime StartAt { get; set; }
 }
 
+public class UpdateAppointmentDTO
+{
+  public Guid DoctorId { get; init; }
+  public int CategoryId { get; init; }
+  public DateTime StartAt { get; init; }
+  public int DurationMinutes { get; init; }
+}
+
 public class AppointmentResponseDTO
 {
   public Guid Id { get; set; }
@@ -34,6 +42,13 @@ public class AppointmentResponseDTO
   public DateTime StartAt { get; set; }
 }
 
+public class GetBookedTimesQuery
+{
+  public Guid DoctorId { get; set; }
+  public DateTime From { get; set; }
+  public DateTime To { get; set; }
+}
+
 public class BookedTimeSlotDTO
 {
   public DateTime StartAt { get; set; }
@@ -45,8 +60,9 @@ public sealed class AppointmentQueryDTO
   public int? ClinicId { get; init; }
   public Guid? DoctorId { get; init; }
   public Guid? PatientId { get; init; }
-
+  /// <summary>Inclusive start date (UTC)</summary>
   public DateTime? From { get; init; }
+  /// <summary>Exclusive end date (UTC)</summary>
   public DateTime? To { get; init; }
 
   public string? Status { get; init; }
@@ -54,6 +70,6 @@ public sealed class AppointmentQueryDTO
   public int Page { get; init; } = 1;
   public int PageSize { get; init; } = 20;
 
-  public string SortBy { get; init; } = "startAt";
-  public string SortDir { get; init; } = "asc"; // "asc" | "desc"
+  public string? SortBy { get; init; } = "startAt";
+  public string? SortDir { get; init; } = "asc";
 }

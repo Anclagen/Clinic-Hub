@@ -65,7 +65,7 @@ builder.Services.AddSwaggerGen(options =>
         Title = "ClinicHub API",
         Version = "v1",
     });
-
+    options.DescribeAllParametersInCamelCase();
     var bearerScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -82,6 +82,13 @@ builder.Services.AddSwaggerGen(options =>
     {
         [new OpenApiSecuritySchemeReference("bearer", document)] = new List<string>()
     });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
 });
 
 //Configure JWT settings
