@@ -55,6 +55,7 @@ swagger issues dotnet 10
 https://stackoverflow.com/questions/79834574/authentication-not-working-in-swagger-with-net-10
 https://github.com/dotnet/aspnetcore/issues/64524
 https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/master/docs/configure-and-customize-swaggergen.md#add-security-definitions-and-requirements-for-bearer-authentication
+Added a custom operation filter to add the Authorize header to the Swagger UI, and added the security definition for JWT Bearer authentication, between Claude, Gemini and ChatGPT, and some help from StackOverflow were able to get it working.
 
 validation the great rabbit hole
 https://www.milanjovanovic.tech/blog/functional-error-handling-in-dotnet-with-the-result-pattern

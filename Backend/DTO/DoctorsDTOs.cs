@@ -1,3 +1,5 @@
+using ZstdSharp.Unsafe;
+
 public record DoctorResponseDTO
 {
   public Guid Id { get; set; }
@@ -22,13 +24,6 @@ public record DoctorWithAppointmentsDTO
   public List<AppointmentResponseDTO> Appointments { get; set; } = [];
 }
 
-// public record AppointmentResponseDTO
-// {
-//   public int Id { get; set; } // whatever your appointment key is
-//   public DateOnly Date { get; set; } // adjust to your model
-//   public int DurationMinutes { get; set; }
-//   public Guid PatientId { get; set; } // or whatever
-// }
 
 public record CreateDoctorDTO
 {
@@ -48,3 +43,19 @@ public record UpdateDoctorDTO
   public int? ClinicId { get; set; }
 }
 
+public record DoctorQueryDTO
+{
+  public int Page { get; init; } = 1;
+  public int PageSize { get; init; } = 20;
+  public int? SpecialityId { get; set; }
+  public int? ClinicId { get; set; }
+}
+
+public record DoctorSearchQueryDTO
+{
+  public string? Query { get; init; }
+  public int Page { get; init; } = 1;
+  public int PageSize { get; init; } = 20;
+  public int? SpecialityId { get; set; }
+  public int? ClinicId { get; set; }
+}
