@@ -74,14 +74,11 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "Enter: Bearer {your JWT token}"
     };
-
     options.AddSecurityDefinition("Bearer", bearerScheme);
-
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-        [new OpenApiSecuritySchemeReference("bearer", document)] = new List<string>()
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
     });
-
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -189,8 +186,13 @@ if (args.Contains("--seed"))
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "ClinicHub API V1");
+        options.RoutePrefix = "doc";
+    });
 }
+
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseAuthentication();
