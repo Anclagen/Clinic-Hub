@@ -11,6 +11,7 @@ using Microsoft.OpenApi;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -57,6 +58,7 @@ builder.Services.AddControllers()
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -75,10 +77,12 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter: Bearer {your JWT token}"
     };
     options.AddSecurityDefinition("Bearer", bearerScheme);
+    // Globally applies the bearer requirement and then the filter strips it from open endpoint because all the guide don't seem to work for .Net 10 with swagger as they want you to use other doc providers
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
     });
+    options.OperationFilter<AuthorizeOperationFilter>();
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
