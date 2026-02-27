@@ -18,12 +18,8 @@ public class AuthService
     _jwtSettings = jwtSettings;
   }
 
-  public async Task<bool> ValidateUserAsync(string email, string password)
+  public async Task<bool> ValidateUserAsync(Patient patient, string password)
   {
-    var patient = await _dataContext.Patients.SingleOrDefaultAsync(p => p.Email == email);
-    if (patient == null)
-      return false;
-
 
     var passwordHasher = new PasswordHasher<Patient>();
     var result = passwordHasher.VerifyHashedPassword(patient, patient.PasswordHash, password);
@@ -31,13 +27,20 @@ public class AuthService
     return result == PasswordVerificationResult.Success;
   }
 
+  public async Task<bool> ValidateAdminUserAsync(Admin admin, string password)
+  {
+
+    var passwordHasher = new PasswordHasher<Admin>();
+    var result = passwordHasher.VerifyHashedPassword(admin, admin.PasswordHash, password);
+
+    return result == PasswordVerificationResult.Success;
+  }
+
   public async Task<bool> RegisterUserAsync(string email, string password, string firstname, string lastname, DateOnly dateOfBirth)
   {
-    //Check if email already exists
     if (await _dataContext.Patients.AnyAsync(p => p.Email == email))
       return false;
 
-    //Create Patient
     var passwordHasher = new PasswordHasher<Patient>();
     var patient = new Patient
     {
@@ -55,22 +58,18 @@ public class AuthService
     return true;
   }
 
-  //Used to retrieve the Username if it exists, when logging in
   public async Task<Patient> GetUserByEmailAsync(string email)
   {
     return await _dataContext.Patients.SingleOrDefaultAsync(u => u.Email == email);
   }
 
-  public string GenerateToken(Patient patient, int role = 1)
+  public async Task<Admin> GetAdminUserByUsernameAsync(string username)
   {
-    string[]? roles = new[] { "Admin", "Patient" };
-    var claims = new[]
-    {
-                new Claim(JwtRegisteredClaimNames.Sub, patient.Id.ToString()),
-                new Claim(ClaimTypes.Role, roles[role]),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
+    return await _dataContext.Admins.SingleOrDefaultAsync(u => u.Username == username);
+  }
 
+  private string CreateToken(IEnumerable<Claim> claims)
+  {
     var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
     var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -78,10 +77,37 @@ public class AuthService
         issuer: _jwtSettings.Issuer,
         audience: _jwtSettings.Audience,
         claims: claims,
-        expires: DateTime.Now.AddMinutes(_jwtSettings.ExpiryMinutes),
+        expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
         signingCredentials: creds
     );
 
     return new JwtSecurityTokenHandler().WriteToken(token);
   }
+
+  public string GenerateToken(Patient patient)
+  {
+    var claims = new List<Claim>
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, patient.Id.ToString()),
+        new Claim(ClaimTypes.Role, "Patient"),
+        new Claim(JwtRegisteredClaimNames.Email, patient.Email),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
+
+    return CreateToken(claims);
+  }
+
+  public string GenerateAdminToken(Admin admin)
+  {
+    var claims = new List<Claim>
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, admin.Id.ToString()),
+        new Claim(ClaimTypes.Role, "Admin"),
+        new Claim(JwtRegisteredClaimNames.UniqueName, admin.Username),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
+
+    return CreateToken(claims);
+  }
 }
+

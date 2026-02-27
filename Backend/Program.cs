@@ -9,7 +9,6 @@ using System.Text.Json;
 using Backend.Data.Seeding;
 using Microsoft.OpenApi;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -169,6 +168,7 @@ builder.Services.AddScoped<ISeeder, CategorySeeder>();
 builder.Services.AddScoped<ISeeder, ClinicSeeder>();
 builder.Services.AddScoped<ISeeder, SpecialitySeeder>();
 builder.Services.AddScoped<ISeeder, DoctorSeeder>();
+builder.Services.AddScoped<ISeeder, AdminSeeder>();
 
 var app = builder.Build();
 

@@ -11,6 +11,7 @@ namespace Backend.Data
 
     }
     public DbSet<Patient> Patients { get; set; }
+    public DbSet<Admin> Admins { get; set; }
     public DbSet<Doctor> Doctors { get; set; }
     public DbSet<Appointment> Appointments { get; set; }
     public DbSet<Clinic> Clinics { get; set; }
@@ -23,6 +24,13 @@ namespace Backend.Data
         d => d.ToDateTime(TimeOnly.MinValue),
         d => DateOnly.FromDateTime(d)
       );
+      modelBuilder.Entity<Admin>()
+        .HasIndex(a => a.Email)
+        .IsUnique();
+
+      modelBuilder.Entity<Admin>()
+        .HasIndex(a => a.Username)
+        .IsUnique();
 
       modelBuilder.Entity<Patient>()
         .Property(p => p.DateOfBirth)
