@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Backend.Data;
-using System.Security.Claims;
+using FluentValidation;
+using Microsoft.AspNetCore.Identity;
+using Backend.Models;
 
 namespace Backend.Controllers
 {
@@ -10,28 +12,44 @@ namespace Backend.Controllers
   [Produces("application/json")]
   [Tags("Patient")]
   [ApiController]
-  public class PatientController : ControllerBase
+  public class PatientController : BaseApiController
   {
     private readonly DataContext _dataContext;
+    protected readonly AuthService _authService;
 
-    public PatientController(DataContext dataContext)
+    public PatientController(DataContext dataContext, AuthService authService)
     {
       _dataContext = dataContext;
+      _authService = authService;
     }
 
+
+
     /// <summary>
-    /// Retrieves all patients.
+    /// Retrieves a paged list of active patients (Admin Only).
     /// </summary>
-    /// <returns>A list of patients</returns>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Administrative Use:**
+    /// - Filters out patients marked as `IsDeleted`.
+    /// - Supports tokenized search by Firstname and Lastname.
+    /// - Results are sorted by Lastname, then Firstname.
+    /// </remarks>
+    /// <param name="q">Search term for name filtering.</param>
+    /// <param name="page">The page number (starts at 1).</param>
+    /// <param name="pageSize">Items per page (max 100).</param>
+    /// <response code="200">Returns a paged list of patient details.</response>
+    /// <response code="401">Unauthorized: Missing or invalid Admin JWT.</response>
+    /// <response code="403">Forbidden: User lacks the Admin role.</response>
     [HttpGet]
     [Authorize(Roles = "Admin")]
-    [ProducesResponseType(typeof(PagedResponseDTO<PatientDetailsDto>), 200)]
+    [ProducesResponseType(typeof(PagedResponseDTO<PatientDetailsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetPatients(
     [FromQuery] string? q,
     [FromQuery] int page = 1,
     [FromQuery] int pageSize = 20
-)
+    )
     {
       page = Math.Max(page, 1);
       pageSize = Math.Clamp(pageSize, 1, 100);
@@ -44,7 +62,6 @@ namespace Backend.Controllers
             .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(t => t.ToLower())
             .ToArray();
-
         foreach (var token in tokens)
         {
           query = query.Where(d =>
@@ -53,7 +70,6 @@ namespace Backend.Controllers
         }
       }
 
-      query = query.Where(p => !p.IsDeleted && p.DateOfBirth != null);
       var total = await query.CountAsync();
       var data = await query
           .OrderBy(p => p.Lastname)
@@ -85,21 +101,35 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Retrieves a patient by ID.
+    /// Retrieves a specific patient profile by ID.
     /// </summary>
-    /// <param name="Id">The patient ID.</param>
-    /// <response code="200">Returns the patient</response>
-    /// <response code="404">If the patient is not found</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Access Control:**
+    /// - Patients can only view their own profile (ID must match JWT 'sub').
+    /// - Admins can view any patient profile.
+    /// </remarks>
+    /// <response code="200">Returns the requested patient profile.</response>
+    /// <response code="401">Unauthorized: Valid JWT is required.</response>
+    /// <response code="403">Forbidden: You cannot access profiles other than your own.</response>
+    /// <response code="404">Not Found: Patient ID does not exist.</response>
     [HttpGet("{Id}")]
     [Authorize]
-    [ProducesResponseType(typeof(PatientProfileDTO), 200)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
+    [ProducesResponseType(typeof(PatientProfileDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PatientProfileDTO>> GetPatient(Guid Id)
     {
-
-      var role = User.FindFirstValue(ClaimTypes.Role);
       var sub = User.FindFirst("sub")?.Value;
+      var isAdmin = User.IsInRole("Admin");
+      if (!isAdmin && Id.ToString() != sub)
+      {
+        return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorDTO
+        {
+          StatusCode = 403,
+          Message = "You are not authorized to view another patient's profile."
+        });
+      }
 
       var patient = await _dataContext.Patients
           .Where(p => p.Id == Id)
@@ -129,135 +159,201 @@ namespace Backend.Controllers
         });
       }
 
-      if (patient.Id.ToString() != sub && role != "Admin")
+      if (isAdmin)
       {
-        return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorDTO
+        return Ok(new PatientDetailsDto
         {
-          StatusCode = 403,
-          Message = "You are not authorized to view another patient's profile."
+          Id = patient.Id,
+          Firstname = patient.Firstname,
+          Lastname = patient.Lastname,
+          Email = patient.Email,
+          DateOfBirth = patient.DateOfBirth.Value,
+          IsGuest = patient.IsGuest.Value,
         });
       }
 
-      return Ok(new { Data = patient, Role = role, Sub = sub });
+      return Ok(patient);
     }
 
     /// <summary>
-    /// Updates a patient by its ID.
+    /// Partially updates a patient's profile.
     /// </summary>
     /// <remarks>
-    /// Sample request:
-    /// {
-    ///   "firstname": "Doc",
-    ///   "lastname": "Tor",
-    /// }
+    /// **Partial Update:** Only provide fields that need changing.
+    /// **Access Control:** Patients can only update themselves. Admins can update anyone.
     /// </remarks>
-    /// <param name="Id">Patient ID</param>
-    /// <response code="204">Confirms update with status code.</response>
-    /// <response code="400">Validation error</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="404">If the patient can't be found</response>
-    /// <response code="409">Update failed due to database constraint.</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <response code="200">Success: Returns the full updated profile.</response>
+    /// <response code="400">Bad Request: Validation failed.</response>
+    /// <response code="401">Unauthorized: Valid JWT is required.</response>
+    /// <response code="403">Forbidden: Attempted to update another user's profile.</response>
+    /// <response code="409">Conflict: Email is already in use by another account.</response>
     [HttpPatch("{Id}")]
     [Authorize]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 409)]
-    public async Task<IActionResult> UpdatePatient(Guid Id, PatientProfileDTO dto)
+    [ProducesResponseType(typeof(PatientProfileDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdatePatient(
+    Guid Id,
+    [FromBody] UpdatePatientDto dto,
+    [FromServices] IValidator<UpdatePatientDto> validator)
     {
-      var entity = await _dataContext.Patients.FindAsync(Id);
-      if (entity == null)
+      var isAdmin = User.IsInRole("Admin");
+      var sub = User.FindFirst("sub")?.Value;
+
+      if (!isAdmin && Id.ToString() != sub)
       {
-        return NotFound(new ApiErrorDTO
-        {
-          StatusCode = 404,
-          Message = $"Patient with id {Id} was not found."
-        });
+        return StatusCode(403, new ApiErrorDTO { StatusCode = 403, Message = "You can only update your own profile." });
       }
 
-      if (dto.Firstname is not null)
-        entity.Firstname = dto.Firstname.Trim();
+      var validationResult = await validator.ValidateAsync(dto);
+      if (!validationResult.IsValid) return ValidationBadRequest(validationResult);
 
-      if (dto.Lastname is not null)
-        entity.Lastname = dto.Lastname.Trim();
+      var entity = await _dataContext.Patients.FindAsync(Id);
+      if (entity == null || entity.IsDeleted)
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Patient not found." });
 
-      if (dto.Email is not null)
+      if (dto.Firstname != null) entity.Firstname = dto.Firstname.Trim();
+      if (dto.Lastname != null) entity.Lastname = dto.Lastname.Trim();
+
+      if (dto.Email != null)
       {
         var newEmail = dto.Email.Trim().ToLowerInvariant();
-        var currentEmail = entity.Email.Trim().ToLowerInvariant();
-
-        if (newEmail != currentEmail)
+        if (newEmail != entity.Email.ToLowerInvariant())
         {
-          var exists = await _dataContext.Patients
-              .AnyAsync(p => p.Email.ToLower() == newEmail && p.Id != entity.Id);
-
-          if (exists)
-            return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed, email already exists." });
-
+          var exists = await _dataContext.Patients.AnyAsync(p => p.Email.ToLower() == newEmail && p.Id != Id);
+          if (exists) return Conflict(new ApiErrorDTO { Message = "Email already in use." });
           entity.Email = newEmail;
         }
       }
 
-      if (dto.DateOfBirth is DateOnly dob)
-        entity.DateOfBirth = dob;
+      if (dto.DateOfBirth.HasValue) entity.DateOfBirth = dto.DateOfBirth;
+      if (dto.Gender != null) entity.Gender = dto.Gender.Trim();
+      if (dto.Address != null) entity.Address = dto.Address.Trim();
+      if (dto.Religion != null) entity.Religion = dto.Religion.Trim();
+      if (dto.DriverLicenseNumber != null) entity.DriverLicenseNumber = dto.DriverLicenseNumber.Trim();
+      if (dto.TaxNumber != null) entity.TaxNumber = dto.TaxNumber.Trim();
+      if (dto.SocialSecurityNumber != null) entity.SocialSecurityNumber = dto.SocialSecurityNumber.Trim();
 
-      if (dto.Gender is not null)
-        entity.Gender = dto.Gender.Trim();
+      try
+      {
+        await _dataContext.SaveChangesAsync();
+      }
+      catch (DbUpdateException)
+      {
+        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed due to database constraint." });
+      }
 
-      if (dto.Religion is not null)
-        entity.Religion = dto.Religion.Trim();
+      return Ok(new PatientProfileDTO
+      {
+        Id = entity.Id,
+        Firstname = entity.Firstname,
+        Lastname = entity.Lastname,
+        Email = entity.Email,
+        DateOfBirth = entity.DateOfBirth,
+        Gender = entity.Gender,
+        Address = entity.Address,
+        IsGuest = entity.IsGuest,
+        Religion = entity.Religion,
+        DriverLicenseNumber = entity.DriverLicenseNumber,
+        MedicalInsuranceMemberNumber = entity.MedicalInsuranceMemberNumber,
+        TaxNumber = entity.TaxNumber,
+        SocialSecurityNumber = entity.SocialSecurityNumber
+      });
+    }
 
-      if (dto.Address is not null)
-        entity.Address = dto.Address.Trim();
+    /// <summary>
+    /// Securely updates the authenticated user's password.
+    /// </summary>
+    /// <remarks>
+    /// **Security Requirements:**
+    /// - Requires the `OldPassword` to prevent unauthorized password changes.
+    /// - Only registered Patients can change passwords (Guest accounts are blocked).
+    /// </remarks>
+    /// <response code="204">Success: Password has been updated.</response>
+    /// <response code="400">Bad Request: Validation failed or incorrect current password.</response>
+    /// <response code="401">Unauthorized: Missing valid JWT.</response>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ChangePassword(
+  [FromBody] ChangePasswordDTO dto,
+  [FromServices] IValidator<ChangePasswordDTO> validator
+  )
+    {
+      var validationResult = await validator.ValidateAsync(dto);
+      if (!validationResult.IsValid) return ValidationBadRequest(validationResult);
 
-      if (dto.DriverLicenseNumber is not null)
-        entity.DriverLicenseNumber = dto.DriverLicenseNumber.Trim();
+      var sub = User.FindFirst("sub")?.Value;
+      if (sub == null) return Unauthorized();
+      var patient = await _dataContext.Patients.FindAsync(Guid.Parse(sub));
 
-      if (dto.MedicalInsuranceMemberNumber is not null)
-        entity.MedicalInsuranceMemberNumber = dto.MedicalInsuranceMemberNumber.Trim();
+      if (patient == null || patient.IsDeleted)
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Patient not found." });
 
-      if (dto.TaxNumber is not null)
-        entity.TaxNumber = dto.TaxNumber.Trim();
+      if (patient.IsGuest)
+        return BadRequest(new ApiErrorDTO { StatusCode = 400, Message = "Guest accounts do not have passwords. Please register first." });
 
-      if (dto.SocialSecurityNumber is not null)
-        entity.SocialSecurityNumber = dto.SocialSecurityNumber.Trim();
+      bool isValid = await _authService.ValidateUserAsync(patient, dto.OldPassword);
+      if (!isValid)
+        return BadRequest(new ApiErrorDTO { StatusCode = 400, Message = "Current password is incorrect." });
 
-      try { await _dataContext.SaveChangesAsync(); }
-      catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed due to database constraint." }); }
+      var passwordHasher = new PasswordHasher<Patient>();
+      patient.PasswordHash = passwordHasher.HashPassword(patient, dto.NewPassword);
+
+      await _dataContext.SaveChangesAsync();
 
       return NoContent();
     }
 
     /// <summary>
-    /// Deletes a patient
+    /// Anonymizes a patient's profile (Soft Delete).
     /// </summary>
-    /// <param name="Id">Patient ID</param>
-    /// <response code="204">Confirms deletion with status code.</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="404">If the patient can't be found</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Privacy Compliance:** 
+    /// Overwrites all PII with null or generic placeholders while retaining the record 
+    /// to maintain historical appointment database integrity.
+    /// </remarks>
+    /// <response code="204">Success: Record anonymized.</response>
+    /// <response code="403">Forbidden: You cannot anonymize other users.</response>
+    /// <response code="404">Not Found: Patient ID invalid.</response>
     [HttpDelete("anonymize/{Id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AnonymizePatient(Guid Id)
     {
+      var isAdmin = User.IsInRole("Admin");
+      var sub = User.FindFirst("sub")?.Value;
+
+      if (!isAdmin && Id.ToString() != sub)
+      {
+        return StatusCode(403, new ApiErrorDTO { Message = "You are not authorized to anonymize this profile." });
+      }
+
       var entity = await _dataContext.Patients.FindAsync(Id);
       if (entity == null)
       {
         return NotFound(new ApiErrorDTO
         {
           StatusCode = 404,
-          Message = $"Patient with id {Id} was not found."
+          Message = "Patient was not found."
         });
       }
+      if (entity.IsDeleted) return NoContent();
 
       entity.Firstname = "[deleted]";
       entity.Lastname = "[deleted]";
       entity.Email = null;
       entity.DateOfBirth = null;
-      entity.IsGuest = true;
       entity.IsDeleted = true;
+      entity.IsGuest = true;
       entity.PasswordHash = null;
       entity.Gender = null;
       entity.Religion = null;
@@ -267,48 +363,55 @@ namespace Backend.Controllers
       entity.TaxNumber = null;
       entity.SocialSecurityNumber = null;
 
-      try { await _dataContext.SaveChangesAsync(); }
-      catch (DbUpdateException) { return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Update failed due to database constraint." }); }
-
+      await _dataContext.SaveChangesAsync();
       return NoContent();
     }
 
     /// <summary>
-    /// Deletes a patient
+    /// Permanently deletes a patient record.
     /// </summary>
-    /// <param name="Id">Patient ID</param>
-    /// <response code="204">Confirms deletion with status code.</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="404">If the patient can't be found</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <remarks>
+    /// **Constraint:** 
+    /// Hard deletion is only allowed if the patient has NO historical appointments. 
+    /// For active patients, use the `anonymize` endpoint instead.
+    /// </remarks>
+    /// <response code="204">Success: Record permanently removed.</response>
+    /// <response code="401">Unauthorized: Valid JWT required.</response>
+    /// <response code="403">Forbidden: Insufficient permissions.</response>
+    /// <response code="409">Conflict: Patient has existing appointments and cannot be removed.</response>
     [HttpDelete("{Id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeletePatient(Guid Id)
     {
+      var isAdmin = User.IsInRole("Admin");
+      var sub = User.FindFirst("sub")?.Value;
+
+      if (!isAdmin && Id.ToString() != sub)
+      {
+        return StatusCode(403, new ApiErrorDTO { Message = "You are not authorized to delete this profile." });
+      }
+
       var patient = await _dataContext.Patients.FindAsync(Id);
-      if (patient == null)
-        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Patient with id {Id} was not found." });
+      if (patient == null) return NotFound();
 
       var hasAppointments = await _dataContext.Appointments.AnyAsync(a => a.PatientId == Id);
-
       if (hasAppointments)
       {
-        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete patient because they have appointments." });
+        return Conflict(new ApiErrorDTO
+        {
+          StatusCode = 409,
+          Message = "Cannot delete patient with existing appointments. Please use anonymize instead."
+        });
       }
 
       _dataContext.Patients.Remove(patient);
-
-      try
-      {
-        await _dataContext.SaveChangesAsync();
-        return NoContent();
-      }
-      catch (DbUpdateException)
-      {
-        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete patient because it is referenced by other records." });
-      }
+      await _dataContext.SaveChangesAsync();
+      return NoContent();
     }
   }
 }

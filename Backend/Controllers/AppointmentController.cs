@@ -292,6 +292,7 @@ namespace Backend.Controllers
       [FromBody] CreateAppointmentDTO dto,
       [FromServices] IValidator<CreateAppointmentDTO> validator)
     {
+      //TODO this should include an email, update the frontend form to include too
 
       var result = await validator.ValidateAsync(dto);
       if (!result.IsValid)
