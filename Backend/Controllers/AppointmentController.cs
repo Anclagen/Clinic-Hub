@@ -438,15 +438,16 @@ namespace Backend.Controllers
     /// - **Time Lock:** Modifications are forbidden within 24 hours of the original start time.
     /// - **Clinic Lock:** The doctor must belong to the same clinic as the original appointment.
     /// - **Availability:** The new time slot must not overlap with the selected doctor's existing schedule.
+    /// **Partial Updates:**
+    /// Only include the fields you wish to change. Null fields will retain their current values.
     /// </remarks>
-    /// <param name="id">The unique GUID of the appointment to update.</param>
-    /// <param name="dto">The updated appointment details.</param>
+    /// <param name="id">The unique GUID of the appointment.</param>
+    /// <param name="dto">The fields to update.</param>
     /// <param name="validator">Injected FluentValidator for UpdateAppointmentDTO.</param>
-    /// <response code="200">Returns the updated appointment details.</response>
-    /// <response code="400">Bad Request: Validation failed, or 24-hour lock violation.</response>
-    /// <response code="401">Unauthorized: Valid JWT token is required.</response>
-    /// <response code="404">Not Found: Appointment does not exist or user lacks ownership.</response>
-    /// <response code="409">Conflict: The selected doctor is already booked for this time slot.</response>
+    /// <response code="200">Success: Returns the full updated appointment details.</response>
+    /// <response code="400">Bad Request: Validation failed or modification attempted within the 24-hour lock period.</response>
+    /// <response code="404">Not Found: Appointment ID is invalid or does not belong to the user.</response>
+    /// <response code="409">Conflict: The selected doctor has a scheduling overlap.</response>
     [HttpPut("{id}")]
     [Authorize]
     [ProducesResponseType(typeof(AppointmentResponseDTO), StatusCodes.Status200OK)]
@@ -473,23 +474,30 @@ namespace Backend.Controllers
       if (appointment.StartAt <= DateTime.UtcNow.AddHours(24))
         return BadRequest(new ApiErrorDTO { StatusCode = 400, Message = "Appointments cannot be modified within 24 hours of their start time." });
 
-      var doctorExistsAtClinic = await _dataContext.Doctors
+      if (dto.CategoryId.HasValue) appointment.CategoryId = dto.CategoryId.Value;
+      if (dto.DoctorId.HasValue)
+      {
+        var doctorExistsAtClinic = await _dataContext.Doctors
           .AnyAsync(d => d.Id == dto.DoctorId && d.ClinicId == appointment.ClinicId);
-      if (!doctorExistsAtClinic)
-        return BadRequest(new ApiBadRequestErrorDTO { Field = "DoctorId", Message = "Selected doctor does not practice at the clinic associated with this appointment." });
 
-      var newEnd = dto.StartAt.AddMinutes(dto.DurationMinutes);
+        if (!doctorExistsAtClinic)
+          return BadRequest(new ApiBadRequestErrorDTO { Field = "DoctorId", Message = "Selected doctor does not practice at the clinic associated with this appointment." });
+
+        appointment.DoctorId = dto.DoctorId.Value;
+      }
+      if (dto.StartAt.HasValue) appointment.StartAt = dto.StartAt.Value;
+      if (dto.DurationMinutes.HasValue) appointment.DurationMinutes = dto.DurationMinutes.Value;
+
+      var newEnd = appointment.StartAt.AddMinutes(appointment.DurationMinutes);
       var overlaps = await _dataContext.Appointments.AnyAsync(a =>
-          a.Id != id && a.DoctorId == dto.DoctorId &&
-          dto.StartAt < a.StartAt.AddMinutes(a.DurationMinutes) && newEnd > a.StartAt);
+                  a.Id != id &&
+                  a.DoctorId == appointment.DoctorId &&
+                  appointment.StartAt < a.StartAt.AddMinutes(a.DurationMinutes) &&
+                  newEnd > a.StartAt);
 
       if (overlaps)
         return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "The selected doctor is already booked for this time slot." });
 
-      appointment.DoctorId = dto.DoctorId;
-      appointment.CategoryId = dto.CategoryId;
-      appointment.StartAt = dto.StartAt;
-      appointment.DurationMinutes = dto.DurationMinutes;
       await _dataContext.SaveChangesAsync();
 
       var updatedAppointment = await _dataContext.Appointments

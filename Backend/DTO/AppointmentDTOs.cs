@@ -14,10 +14,10 @@ public class CreateAppointmentDTO
 
 public class UpdateAppointmentDTO
 {
-  public Guid DoctorId { get; init; }
-  public int CategoryId { get; init; }
-  public DateTime StartAt { get; init; }
-  public int DurationMinutes { get; init; }
+  public Guid? DoctorId { get; init; }
+  public int? CategoryId { get; init; }
+  public DateTime? StartAt { get; init; }
+  public int? DurationMinutes { get; init; }
 }
 
 public class AppointmentResponseDTO

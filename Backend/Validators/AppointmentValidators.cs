@@ -85,18 +85,22 @@ public class UpdateAppointmentValidator : AbstractValidator<UpdateAppointmentDTO
     public UpdateAppointmentValidator(DataContext db)
     {
         RuleFor(x => x.DoctorId)
-            .NotEmpty();
+            .NotEmpty()
+            .When(x => x.DoctorId != null);
 
         RuleFor(x => x.CategoryId)
             .MustAsync(async (id, ct) => await db.Categories.AnyAsync(c => c.Id == id, ct))
-            .WithMessage("The selected category does not exist.");
+            .WithMessage("The selected category does not exist.")
+            .When(x => x.CategoryId != null);
 
         RuleFor(x => x.StartAt)
-            .Must(date => date.Kind == DateTimeKind.Utc).WithMessage("Start time must be UTC.")
+            .Must(date => !date.HasValue || date.Value.Kind == DateTimeKind.Utc).WithMessage("Start time must be UTC.")
             .GreaterThan(DateTime.UtcNow.AddHours(24))
-            .WithMessage("Appointments must be scheduled at least 24 hours in advance.");
+            .WithMessage("Appointments must be scheduled at least 24 hours in advance.")
+            .When(x => x.StartAt.HasValue);
 
         RuleFor(x => x.DurationMinutes)
-            .InclusiveBetween(5, 120);
+            .InclusiveBetween(5, 120)
+            .When(x => x.DurationMinutes != null);
     }
 }
