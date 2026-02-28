@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation;
 namespace Backend.Controllers
 {
   [ApiController]
   [Route("auth")]
-  public class AuthController : ControllerBase
+  public class AuthController : BaseApiController
   {
     private readonly AuthService _authService;
 
@@ -67,8 +68,13 @@ namespace Backend.Controllers
     [HttpPost("register")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Register([FromBody] RegisterDTO request)
+    public async Task<IActionResult> Register(
+      [FromBody] RegisterDTO request,
+      [FromServices] IValidator<RegisterDTO> validator)
     {
+      var validationResult = await validator.ValidateAsync(request);
+      if (!validationResult.IsValid) return ValidationBadRequest(validationResult);
+
       if (await _authService.RegisterUserAsync(request.Email, request.Password, request.Firstname, request.Lastname, request.DateOfBirth))
       {
         return Ok("Registration successful");
@@ -95,11 +101,8 @@ namespace Backend.Controllers
 
       var admin = await _authService.GetAdminUserByUsernameAsync(request.Username);
 
-      if (admin == null)
-        return Unauthorized(new ApiErrorDTO { StatusCode = 401, Message = "Invalid credentials" });
-
-      if (!await _authService.ValidateAdminUserAsync(admin, request.Password))
-        return Unauthorized(new ApiErrorDTO { StatusCode = 401, Message = "Invalid credentials" });
+      if (admin == null || !await _authService.ValidateAdminUserAsync(admin, request.Password))
+        return Unauthorized(new ApiErrorDTO { StatusCode = 401, Message = "Invalid username or password" });
 
       var token = _authService.GenerateAdminToken(admin);
 
