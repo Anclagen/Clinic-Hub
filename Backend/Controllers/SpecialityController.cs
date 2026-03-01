@@ -211,7 +211,7 @@ namespace Backend.Controllers
     /// <response code="409">Conflict: If the speciality is currently linked to a doctor</response>
     /// <response code="500">Something went wrong server side.</response>
     [HttpDelete("{id}")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
