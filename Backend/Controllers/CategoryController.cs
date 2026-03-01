@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Backend.Data;
+using FluentValidation;
 
 namespace Backend.Controllers
 {
@@ -10,7 +11,7 @@ namespace Backend.Controllers
   [Produces("application/json")]
   [Tags("Category")]
   [ApiController]
-  public class CategoryController : ControllerBase
+  public class CategoryController : BaseApiController
   {
     private readonly DataContext _dataContext;
 
@@ -20,16 +21,25 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Retrieves all categories.
+    /// Retrieves a paged list of all appointment categories.
     /// </summary>
-    /// <returns>A list of categories</returns>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <param name="page">The page number (defaults to 1).</param>
+    /// <param name="pageSize">Items per page (max 100, defaults to 20).</param>
+    /// <response code="200">Returns a paged wrapper of categories.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<CategoryResponseDTO>), 200)]
-    public async Task<ActionResult<IEnumerable<CategoryResponseDTO>>> GetCategories()
+    [ProducesResponseType(typeof(PagedResponseDTO<CategoryResponseDTO>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCategories([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-      //TODO implement pagination
-      var categories = await _dataContext.Categories
+      page = Math.Max(page, 1);
+      pageSize = Math.Clamp(pageSize, 1, 100);
+
+      var query = _dataContext.Categories.AsNoTracking();
+      var total = await query.CountAsync();
+
+      var data = await query
+          .OrderBy(c => c.CategoryName)
+          .Skip((page - 1) * pageSize)
+          .Take(pageSize)
           .Select(t => new CategoryResponseDTO
           {
             Id = t.Id,
@@ -39,23 +49,33 @@ namespace Backend.Controllers
           })
           .ToListAsync();
 
-      return Ok(categories);
+      return Ok(new PagedResponseDTO<CategoryResponseDTO>
+      {
+        Data = data,
+        Pagination = new PaginationDTO
+        {
+          Page = page,
+          PageSize = pageSize,
+          Total = total,
+          TotalPages = (int)Math.Ceiling(total / (double)pageSize)
+        }
+      });
     }
 
     /// <summary>
-    /// Retrieves a category by ID.
+    /// Retrieves a specific appointment category by ID.
     /// </summary>
-    /// <param name="Id">The category ID.</param>
-    /// <response code="200">Returns the category</response>
-    /// <response code="404">If the category is not found</response>
-    /// <response code="500">Something went wrong server side.</response>
-    [HttpGet("{Id}")]
-    [ProducesResponseType(typeof(CategoryResponseDTO), 200)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
-    public async Task<ActionResult<CategoryResponseDTO>> GetCategory(int Id)
+    /// <param name="id">The unique integer ID of the category.</param>
+    /// <response code="200">Returns the requested category details.</response>
+    /// <response code="404">Not Found: Category ID does not exist.</response>
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(CategoryResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CategoryResponseDTO>> GetCategory(int id)
     {
       var category = await _dataContext.Categories
-          .Where(r => r.Id == Id)
+          .AsNoTracking()
+          .Where(r => r.Id == id)
           .Select(t => new CategoryResponseDTO
           {
             Id = t.Id,
@@ -64,58 +84,44 @@ namespace Backend.Controllers
             Description = t.Description
           })
           .FirstOrDefaultAsync();
+
       if (category is null)
-      {
-        return NotFound(new ApiErrorDTO
-        {
-          StatusCode = 404,
-          Message = $"Category with id {Id} was not found."
-        });
-      }
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Category {id} not found." });
+
       return Ok(category);
     }
 
     /// <summary>
-    /// Creates a category
+    /// Creates a new appointment category (Admin Only).
     /// </summary>
-    /// <remarks>
-    /// Sample request:
-    /// {
-    ///   "categoryName": "Exsanguination",
-    ///   "defaultDuration": 15,
-    ///   "description": "Removal of all patients blood to offer to the vampiric overlords."
-    /// }
-    /// </remarks>
-    /// <response code="201">Returns the newly created category</response>
-    /// <response code="400">If the category is null</response>
-    /// <response code="400">If the category name is null</response>
-    /// <response code="409">If the category name already exists</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="500">Something went wrong server side.</response>
+    /// <param name="dto">The request body.</param>
+    /// <param name="validator">The Fluent validation validator.</param>
+    /// <response code="201">Success: Returns the newly created category.</response>
+    /// <response code="400">Bad Request: Validation failed (e.g., duration out of range).</response>
+    /// <response code="401">Unauthorized: Admin JWT required.</response>
+    /// <response code="403">Forbidden: Insufficient permissions.</response>
+    /// <response code="409">Conflict: Category name already exists.</response>
     [HttpPost]
-    [Authorize]
-    [ProducesResponseType(typeof(CategoryResponseDTO), 201)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CategoryResponseDTO>> AddCategory([FromBody] CreateCategoryDTO dto)
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(CategoryResponseDTO), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AddCategory(
+        [FromBody] CreateCategoryDTO dto,
+        [FromServices] IValidator<CreateCategoryDTO> validator)
     {
-      var categoryName = dto.CategoryName.Trim();
+      var result = await validator.ValidateAsync(dto);
+      if (!result.IsValid) return ValidationBadRequest(result);
 
-      var nameExists = await _dataContext.Categories.AnyAsync(c =>
-          c.CategoryName.ToLower() == categoryName.ToLower());
-
-      if (nameExists)
-      {
-        return Conflict(new ApiErrorDTO
-        {
-          StatusCode = 409,
-          Message = $"Category with name '{dto.CategoryName}' already exists."
-        });
-      }
+      var normalized = dto.CategoryName.Trim().ToLower();
+      if (await _dataContext.Categories.AnyAsync(c => c.CategoryName.ToLower() == normalized))
+        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = $"Category '{dto.CategoryName}' already exists." });
 
       var entity = new Category
       {
-        CategoryName = categoryName,
+        CategoryName = dto.CategoryName.Trim(),
         DefaultDuration = dto.DefaultDuration,
         Description = dto.Description
       };
@@ -123,104 +129,102 @@ namespace Backend.Controllers
       _dataContext.Categories.Add(entity);
       await _dataContext.SaveChangesAsync();
 
-      var response = new CategoryResponseDTO
+      return CreatedAtAction(nameof(GetCategory), new { id = entity.Id }, new CategoryResponseDTO
       {
         Id = entity.Id,
         CategoryName = entity.CategoryName,
         DefaultDuration = entity.DefaultDuration,
         Description = entity.Description
-      };
-
-      return CreatedAtAction(nameof(GetCategory), new { Id = response.Id }, response);
+      });
     }
 
     /// <summary>
-    /// Updates a category by its ID.
+    /// Partially updates an appointment category (Admin Only).
     /// </summary>
-    /// <param name="Id">Category ID</param>
-    /// <response code="204">Confirms update with status code.</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="404">If the category can't be found</response>
-    /// <response code="409">If the category name already exists</response>
-    /// <response code="500">Something went wrong server side.</response>
-    [HttpPut("{Id}")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 409)]
-    public async Task<IActionResult> UpdateCategory(int Id, UpdateCategoryDTO dto)
+    /// <remarks>
+    /// **Partial Update:** Only provide the fields you wish to change.
+    /// </remarks>
+    /// <param name="id">The unique integer ID of the category.</param>
+    /// <param name="dto">The request body.</param>
+    /// <param name="validator">The Fluent validation validator.</param>
+    /// <response code="200">Success: Returns the updated category object.</response>
+    /// <response code="400">Bad Request: Validation failed.</response>
+    /// <response code="401">Unauthorized: Admin JWT required.</response>
+    /// <response code="404">Not Found: Category ID does not exist.</response>
+    /// <response code="409">Conflict: Name collision with another category.</response>
+    [HttpPatch("{id}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(CategoryResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateCategory(
+        int id,
+        [FromBody] UpdateCategoryDTO dto,
+        [FromServices] IValidator<UpdateCategoryDTO> validator)
     {
-      var entity = await _dataContext.Categories.FindAsync(Id);
+      var result = await validator.ValidateAsync(dto);
+      if (!result.IsValid) return ValidationBadRequest(result);
+
+      var entity = await _dataContext.Categories.FindAsync(id);
       if (entity == null)
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Category {id} not found." });
+
+      if (!string.IsNullOrWhiteSpace(dto.CategoryName))
       {
-        return NotFound(new ApiErrorDTO
-        {
-          StatusCode = 404,
-          Message = $"Category with id {Id} was not found."
-        });
-      }
+        var normalized = dto.CategoryName.Trim().ToLower();
+        var exists = await _dataContext.Categories.AnyAsync(c => c.Id != id && c.CategoryName.ToLower() == normalized);
+        if (exists) return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Another category with this name exists." });
 
-      if (!string.IsNullOrWhiteSpace(dto.CategoryName) &&
-        !string.Equals(dto.CategoryName, entity.CategoryName, StringComparison.OrdinalIgnoreCase))
-      {
-        var categoryName = dto.CategoryName.Trim();
-
-        var nameExists = await _dataContext.Categories.AnyAsync(c =>
-            c.Id != Id &&
-            c.CategoryName.ToLower() == categoryName.ToLower());
-
-        if (nameExists)
-        {
-          return Conflict(new ApiErrorDTO
-          {
-            StatusCode = 409,
-            Message = $"Category with name '{dto.CategoryName}' already exists."
-          });
-        }
-
-        entity.CategoryName = categoryName;
+        entity.CategoryName = dto.CategoryName.Trim();
       }
 
       if (dto.DefaultDuration.HasValue)
         entity.DefaultDuration = dto.DefaultDuration.Value;
 
-      if (dto.Description is not null)
-        entity.Description = dto.Description;
+      if (dto.Description != null)
+        entity.Description = dto.Description.Trim();
 
       await _dataContext.SaveChangesAsync();
 
-      return NoContent();
+      return Ok(new CategoryResponseDTO
+      {
+        Id = entity.Id,
+        CategoryName = entity.CategoryName,
+        DefaultDuration = entity.DefaultDuration,
+        Description = entity.Description
+      });
     }
 
     /// <summary>
-    /// Deletes a category
+    /// Deletes an appointment category (Admin Only).
     /// </summary>
-    /// <param name="Id">Category ID</param>
-    /// <response code="204">Confirms deletion with status code.</response>
-    /// <response code="401">If you lack an jwt token in your request headers</response>
-    /// <response code="404">If the category can't be found</response>
-    /// <response code="500">Something went wrong server side.</response>
-    [HttpDelete("{Id}")]
-    [Authorize]
+    /// <remarks>
+    /// **Safety Guard:** Blocks deletion if any existing appointments are assigned to this category.
+    /// </remarks>
+    /// <param name="id">The unique integer ID of the category.</param>
+    /// <response code="204">Success: Category deleted.</response>
+    /// <response code="409">Conflict: Category is currently in use by appointment records.</response>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ApiErrorDTO), 404)]
-    public async Task<IActionResult> DeleteCategory(int Id)
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteCategory(int id)
     {
-      var category = await _dataContext.Categories.FindAsync(Id);
+      var category = await _dataContext.Categories.FindAsync(id);
       if (category is null)
-        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Category with id {Id} was not found." });
+        return NotFound(new ApiErrorDTO { StatusCode = 404, Message = $"Category {id} not found." });
+
+      var hasAppointments = await _dataContext.Appointments.AnyAsync(a => a.CategoryId == id);
+      if (hasAppointments)
+        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete category: it is referenced by existing appointments." });
 
       _dataContext.Categories.Remove(category);
+      await _dataContext.SaveChangesAsync();
 
-      try
-      {
-        await _dataContext.SaveChangesAsync();
-        return NoContent();
-      }
-      catch (DbUpdateException)
-      {
-        return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Cannot delete category because it is referenced by other records." });
-      }
+      return NoContent();
     }
   }
 }
