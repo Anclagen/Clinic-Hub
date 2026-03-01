@@ -34,6 +34,7 @@ export type PatientAppointment = {
 };
 
 export type CreateAppointmentPayload = {
+  patientId: string | null;
   firstname: string;
   lastname: string;
   dateOfBirth: string;
@@ -45,6 +46,12 @@ export type CreateAppointmentPayload = {
 };
 
 export const AppointmentsService = {
+  byId: (id: string) =>
+    api<PatientAppointment>({
+      path: "/appointments/" + id,
+      auth: true,
+    }),
+
   mine: (query?: { page?: number; pageSize?: number }) =>
     api<PagedResponse<PatientAppointment>>({
       path: "/appointments/me",
@@ -68,9 +75,17 @@ export const AppointmentsService = {
     }),
 
   create: (payload: CreateAppointmentPayload) =>
-    api({
+    api<PatientAppointment>({
       method: "POST",
       path: "/appointments",
+      auth: true,
+      body: payload,
+    }),
+
+  update: (id: string, payload: CreateAppointmentPayload) =>
+    api({
+      method: "PUT",
+      path: "/appointments/" + id,
       auth: true,
       body: payload,
     }),

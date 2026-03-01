@@ -78,6 +78,7 @@ namespace Backend.Controllers
             Firstname = a.Patient.Firstname,
             Lastname = a.Patient.Lastname,
             DateOfBirth = a.Patient.DateOfBirth,
+            Email = a.Patient.Email,
             ClinicId = a.ClinicId,
             ClinicName = a.Clinic.ClinicName,
             DoctorId = a.DoctorId,
@@ -144,6 +145,7 @@ namespace Backend.Controllers
             Firstname = d.Patient.Firstname,
             Lastname = d.Patient.Lastname,
             DateOfBirth = d.Patient.DateOfBirth,
+            Email = d.Patient.Email,
             PatientId = d.PatientId,
             CategoryId = d.CategoryId,
             CategoryName = d.Category.CategoryName,
@@ -198,6 +200,7 @@ namespace Backend.Controllers
             Firstname = a.Patient.Firstname,
             Lastname = a.Patient.Lastname,
             DateOfBirth = a.Patient.DateOfBirth,
+            Email = a.Patient.Email,
             PatientId = a.PatientId,
             CategoryId = a.CategoryId,
             CategoryName = a.Category.CategoryName,
@@ -277,7 +280,8 @@ namespace Backend.Controllers
     /// - **Validation:** Ensures the doctor belongs to the clinic and that the time slot is currently available.
     /// </remarks>
     /// <param name="dto">The appointment details including Patient info (for guests), Doctor, and Schedule.</param>
-    /// <param name="validator">Injected FluentValidator for CreateAppointmentDTO.</param>
+    /// <param name="coreValidator">Injected FluentValidator for CreateAppointmentDTO.</param>
+    /// <param name="guestValidator">Injected FluentValidator for anonymous Creation.</param>
     /// <response code="201">Success: Returns the newly created appointment with full details.</response>
     /// <response code="400">Bad Request: Validation failed or account is deleted.</response>
     /// <response code="401">Unauthorized: Session expired or invalid token detected.</response>
@@ -289,17 +293,11 @@ namespace Backend.Controllers
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AppointmentResponseDTO>> AddAppointment(
-      [FromBody] CreateAppointmentDTO dto,
-      [FromServices] IValidator<CreateAppointmentDTO> validator)
+    [FromBody] CreateAppointmentDTO dto,
+    [FromServices] IValidator<CreateAppointmentDTO> coreValidator,
+    [FromServices] IValidator<CreateAnonymousAppointmentDTO> guestValidator)
     {
-      //TODO this should include an email, update the frontend form to include too
-
-      var result = await validator.ValidateAsync(dto);
-      if (!result.IsValid)
-      {
-        return ValidationBadRequest(result);
-      }
-
+      // Throw out expired/invalid Bearer tokens immediately
       var authHeader = Request.Headers.Authorization.ToString();
       var hasBearer = !string.IsNullOrWhiteSpace(authHeader) &&
                       authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
@@ -315,54 +313,85 @@ namespace Backend.Controllers
         });
       }
 
+      // Who is booking this? if logged in get the id
       Guid? authenticatedPatientId = null;
       if (isAuthed)
       {
         var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-        if (!Guid.TryParse(sub, out var pid))
-        {
-          return Unauthorized(new ApiErrorDTO { StatusCode = 401, Message = "Invalid user identifier." });
-        }
-        authenticatedPatientId = pid;
+        if (Guid.TryParse(sub, out var pid))
+          authenticatedPatientId = pid;
+        else
+          return Unauthorized(new ApiErrorDTO { Message = "Invalid user identifier." });
       }
 
-      Patient? resolvedPatient = null;
-
-      if (authenticatedPatientId is not null)
+      // If not logged in, check first, last name, dob, and email fields before hitting the DB
+      if (authenticatedPatientId == null)
       {
-        resolvedPatient = await _dataContext.Patients
-          .SingleOrDefaultAsync(x => x.Id == authenticatedPatientId.Value);
+        var guestResult = await guestValidator.ValidateAsync(dto);
+        if (!guestResult.IsValid) return ValidationBadRequest(guestResult);
+      }
 
-        if (resolvedPatient is null)
-          return Unauthorized(new ApiErrorDTO { StatusCode = 401, Message = "User account was not found." });
+      // Now hit the DB to check Doctor/Clinic existence
+      var coreResult = await coreValidator.ValidateAsync(dto);
+      if (!coreResult.IsValid) return ValidationBadRequest(coreResult);
 
-        if (resolvedPatient.IsDeleted)
-          return BadRequest(new ApiBadRequestErrorDTO { StatusCode = 400, Field = "", Message = "Your account is deleted. Please restore it or create a new account." });
+      // get or setup the patient creation
+      Patient? resolvedPatient = null;
+      if (authenticatedPatientId.HasValue)
+      {
+        resolvedPatient = await _dataContext.Patients.FindAsync(authenticatedPatientId.Value);
+        // chuck out deleted or anonymised accounts that might have a token still floating around, frontend should logout on 401.
+        if (resolvedPatient == null || resolvedPatient.IsDeleted)
+          return Unauthorized(new ApiErrorDTO { StatusCode = 401, Message = "Account is invalid or deactivated." });
       }
       else
       {
-        // Search for existing Guest record to avoid duplicates might delete this???
-        resolvedPatient = await _dataContext.Patients.SingleOrDefaultAsync(p =>
-          p.IsGuest &&
-          !p.IsDeleted &&
-          p.Firstname == dto.Firstname &&
-          p.Lastname == dto.Lastname &&
-          p.DateOfBirth == dto.DateOfBirth
-        );
+        // Search for existing Guest record to avoid duplicates, and push matches to current guest user in the system
+        var emailLower = dto.Email!.Trim().ToLower();
+        var existing = await _dataContext.Patients
+            .FirstOrDefaultAsync(p => p.Email == emailLower && !p.IsDeleted);
 
-        if (resolvedPatient is null)
+        if (existing != null)
+        {
+          // If they have a real account, they shouldn't book as a guest
+          if (!existing.IsGuest)
+          {
+            return Conflict(new ApiErrorDTO
+            {
+              Message = "This email is registered. Please log in to book your appointment."
+            });
+          }
+
+          // If guest, verify matching details as well as email.
+          bool matches = existing.Firstname.Equals(dto.Firstname?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                             existing.Lastname.Equals(dto.Lastname?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                             existing.DateOfBirth == dto.DateOfBirth;
+
+          if (!matches)
+          {
+            return Conflict(new ApiErrorDTO
+            {
+              Message = "This email is associated with a different guest profile (Name or DOB mismatch)."
+            });
+          }
+
+          resolvedPatient = existing;
+        }
+        else
         {
           resolvedPatient = new Patient
           {
-            Firstname = dto.Firstname.Trim(),
-            Lastname = dto.Lastname.Trim(),
+            Firstname = dto.Firstname!.Trim(),
+            Lastname = dto.Lastname!.Trim(),
+            Email = emailLower,
+            DateOfBirth = dto.DateOfBirth,
             IsGuest = true,
-            IsDeleted = false,
-            DateOfBirth = dto.DateOfBirth.Value
+            IsDeleted = false
           };
         }
       }
 
+      // booking conflicts
       var newEnd = dto.StartAt.AddMinutes(dto.DurationMinutes);
       var overlaps = await _dataContext.Appointments.AnyAsync(a =>
         a.DoctorId == dto.DoctorId &&
@@ -373,10 +402,11 @@ namespace Backend.Controllers
       if (overlaps)
         return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "This appointment coincides with another." });
 
+      // Transaction time!!!
       await using var tx = await _dataContext.Database.BeginTransactionAsync();
-
       try
       {
+        // add patient if they have no id and need creating
         if (resolvedPatient.Id == Guid.Empty)
         {
           _dataContext.Patients.Add(resolvedPatient);
@@ -395,8 +425,8 @@ namespace Backend.Controllers
 
         _dataContext.Appointments.Add(entity);
         await _dataContext.SaveChangesAsync();
-
         await tx.CommitAsync();
+
         var finalAppointment = await _dataContext.Appointments
           .Include(a => a.Category)
           .Include(a => a.Doctor)
@@ -410,6 +440,8 @@ namespace Backend.Controllers
           PatientId = finalAppointment.PatientId,
           Firstname = finalAppointment.Patient.Firstname,
           Lastname = finalAppointment.Patient.Lastname,
+          Email = finalAppointment.Patient.Email,
+          DateOfBirth = finalAppointment.Patient.DateOfBirth,
           CategoryId = finalAppointment.CategoryId,
           CategoryName = finalAppointment.Category.CategoryName,
           DoctorId = finalAppointment.DoctorId,

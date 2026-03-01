@@ -1,16 +1,20 @@
-public class CreateAppointmentDTO
+public class CreateAnonymousAppointmentDTO
 {
-
-  public Guid? PatientId { get; set; }
   public string? Firstname { get; set; }
   public string? Lastname { get; set; }
+  public string? Email { get; set; }
   public DateOnly? DateOfBirth { get; set; }
+}
+
+public class CreateAppointmentDTO : CreateAnonymousAppointmentDTO
+{
   public int ClinicId { get; set; }
   public Guid DoctorId { get; set; }
   public int CategoryId { get; set; }
   public int DurationMinutes { get; set; }
   public DateTime StartAt { get; set; }
 }
+
 
 public class UpdateAppointmentDTO
 {
@@ -23,10 +27,9 @@ public class UpdateAppointmentDTO
 public class AppointmentResponseDTO
 {
   public Guid Id { get; set; }
-
   public string Firstname { get; set; }
   public string Lastname { get; set; }
-
+  public string? Email { get; set; }
   public DateOnly? DateOfBirth { get; set; }
 
   public Guid PatientId { get; set; }

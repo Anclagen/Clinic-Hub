@@ -30,13 +30,19 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentDTO
             .GreaterThan(0)
             .MustAsync(async (id, ct) => await db.Categories.AnyAsync(c => c.Id == id, ct))
             .WithMessage(x => $"Category with id {x.CategoryId} was not found.");
+    }
+}
 
-        When(x => x.PatientId == null, () =>
-        {
-            RuleFor(x => x.Firstname).NotEmpty().MaximumLength(100);
-            RuleFor(x => x.Lastname).NotEmpty().MaximumLength(100);
-            RuleFor(x => x.DateOfBirth).NotNull();
-        });
+public class GuestBookingValidator : AbstractValidator<CreateAnonymousAppointmentDTO>
+{
+    public GuestBookingValidator()
+    {
+        RuleFor(x => x.Firstname).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.Lastname).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.DateOfBirth).NotNull()
+            .Must(dob => dob <= DateOnly.FromDateTime(DateTime.Today))
+            .WithMessage("Date of Birth cannot be in the future.");
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
     }
 }
 
