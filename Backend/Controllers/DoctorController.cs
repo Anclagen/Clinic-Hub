@@ -249,8 +249,25 @@ namespace Backend.Controllers
         return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Doctor not found." });
       }
 
+      if (dto.ClinicId.HasValue && dto.ClinicId.Value != entity.ClinicId)
+      {
+        // Check for future appointments at the OLD clinic
+        var hasFutureAppointments = await _dataContext.Appointments
+            .AnyAsync(a => a.DoctorId == Id &&
+                           a.ClinicId == entity.ClinicId &&
+                           a.StartAt > DateTime.UtcNow);
+        if (hasFutureAppointments)
+        {
+          return Conflict(new ApiErrorDTO
+          {
+            StatusCode = 409,
+            Message = "Cannot change clinic. This doctor has upcoming appointments at their current location. Please reassign or cancel them first."
+          });
+        }
+        entity.ClinicId = dto.ClinicId.Value;
+      }
+
       if (dto.SpecialityId.HasValue) entity.SpecialityId = dto.SpecialityId.Value;
-      if (dto.ClinicId.HasValue) entity.ClinicId = dto.ClinicId.Value;
       if (dto.Firstname != null) entity.Firstname = dto.Firstname.Trim();
       if (dto.Lastname != null) entity.Lastname = dto.Lastname.Trim();
       if (dto.ImageUrl != null) entity.ImageUrl = dto.ImageUrl;
