@@ -36,24 +36,53 @@ public class AuthService
     return result == PasswordVerificationResult.Success;
   }
 
-  public async Task<bool> RegisterUserAsync(string email, string password, string firstname, string lastname, DateOnly dateOfBirth)
+  public async Task<bool> RegisterUserAsync(string email, string password, string first, string last, DateOnly dob)
   {
-    if (await _dataContext.Patients.AnyAsync(p => p.Email == email))
-      return false;
+    var normalizedEmail = email.Trim().ToLower();
 
-    var passwordHasher = new PasswordHasher<Patient>();
-    var patient = new Patient
+    var existingPatient = await _dataContext.Patients
+        .FirstOrDefaultAsync(p => p.Email == normalizedEmail && !p.IsDeleted);
+
+    if (existingPatient != null)
     {
-      Email = email,
-      PasswordHash = passwordHasher.HashPassword(null, password),
-      Firstname = firstname,
-      Lastname = lastname,
+      // If they are already a registered user (not a guest), we can't register again
+      if (!existingPatient.IsGuest) return false;
+
+      // guest to registered memember logic
+      // Verify PII matches to ensure this is the same person
+      bool piiMatches = existingPatient.Firstname.Equals(first, StringComparison.OrdinalIgnoreCase) &&
+                        existingPatient.Lastname.Equals(last, StringComparison.OrdinalIgnoreCase) &&
+                        existingPatient.DateOfBirth == dob;
+
+      if (!piiMatches)
+      {
+        // Security: Email exists but details don't match. 
+        return false;
+      }
+
+      // If it's the same person, set IsGuest false and add the password.
+      var hasher = new PasswordHasher<Patient>();
+      existingPatient.PasswordHash = hasher.HashPassword(existingPatient, password);
+      existingPatient.IsGuest = false;
+
+      await _dataContext.SaveChangesAsync();
+      return true;
+    }
+
+    var newPatient = new Patient
+    {
+      Email = normalizedEmail,
+      Firstname = first.Trim(),
+      Lastname = last.Trim(),
+      DateOfBirth = dob,
       IsGuest = false,
-      IsDeleted = false,
-      DateOfBirth = dateOfBirth
+      IsDeleted = false
     };
 
-    _dataContext.Patients.Add(patient);
+    var newHasher = new PasswordHasher<Patient>();
+    newPatient.PasswordHash = newHasher.HashPassword(newPatient, password);
+
+    _dataContext.Patients.Add(newPatient);
     await _dataContext.SaveChangesAsync();
     return true;
   }
