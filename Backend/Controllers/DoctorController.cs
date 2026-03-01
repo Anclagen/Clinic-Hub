@@ -229,9 +229,11 @@ namespace Backend.Controllers
     /// <response code="200">Success: Returns the full updated doctor profile.</response>
     /// <response code="400">Bad Request: Validation failed.</response>
     /// <response code="404">Not Found: Doctor ID does not exist.</response>
-    [HttpPut("{Id}")]
+    [HttpPatch("{Id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(DoctorResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateDoctor(
         Guid Id,
@@ -283,6 +285,8 @@ namespace Backend.Controllers
     [HttpDelete("{Id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteDoctor(Guid Id)

@@ -37,8 +37,8 @@ public class GuestBookingValidator : AbstractValidator<CreateAnonymousAppointmen
 {
     public GuestBookingValidator()
     {
-        RuleFor(x => x.Firstname).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Lastname).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.Firstname).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.Lastname).NotEmpty().MaximumLength(50);
         RuleFor(x => x.DateOfBirth).NotNull()
             .Must(dob => dob <= DateOnly.FromDateTime(DateTime.Today))
             .WithMessage("Date of Birth cannot be in the future.");

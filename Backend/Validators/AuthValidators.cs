@@ -4,8 +4,8 @@ public class RegisterValidator : AbstractValidator<RegisterDTO>
   public RegisterValidator()
   {
     RuleFor(x => x.Email).NotEmpty().EmailAddress();
-    RuleFor(x => x.Firstname).NotEmpty().MaximumLength(100);
-    RuleFor(x => x.Lastname).NotEmpty().MaximumLength(100);
+    RuleFor(x => x.Firstname).NotEmpty().MaximumLength(50);
+    RuleFor(x => x.Lastname).NotEmpty().MaximumLength(50);
 
     // Enforce the 8-character minimum here
     RuleFor(x => x.Password)
