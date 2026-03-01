@@ -23,7 +23,8 @@ namespace Backend.Controllers
     [ProducesResponseType(typeof(ApiErrorDTO), 401)]
     public async Task<IActionResult> Login([FromBody] LoginDTO request)
     {
-      var user = await _authService.GetUserByEmailAsync(request.Email);
+      var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+      var user = await _authService.GetUserByEmailAsync(normalizedEmail);
 
       if (user == null || user.IsDeleted || user.PasswordHash == null)
         return Unauthorized(new ApiErrorDTO { StatusCode = 401, Message = "Invalid email or password" });
