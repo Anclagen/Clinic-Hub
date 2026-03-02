@@ -32,7 +32,7 @@ export function ClinicsDirectory() {
       try {
         const list = await ClinicsService.all();
         if (!active) return;
-        setClinics(list);
+        setClinics(list.data);
       } catch (e) {
         if (!active) return;
         setError(e instanceof Error ? e.message : "Failed to load clinics.");

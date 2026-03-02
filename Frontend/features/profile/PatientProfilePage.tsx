@@ -1,71 +1,25 @@
 "use client";
 
-import { SubmitEvent, useEffect, useMemo, useState } from "react";
+import { SubmitEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InputField } from "@/features/UI/forms/InputField";
-import {
-  PatientsService,
-  type PatientProfile,
-  resolveCurrentPatientId,
-} from "@/api/services/patientsService";
+import { SelectField } from "../UI/forms/SelectField";
+import { PatientsService, resolveCurrentPatientId } from "@/api/services/patientsService";
 import { AppointmentsService, type PatientAppointment } from "@/api/services/appointmentsService";
 import { isApiError } from "@/api/errors";
 import { useAuthStore } from "@/stores/authStore";
-import AppointmentCard from "./components/AppointmentCard";
-
-type ProfileFormState = {
-  firstname: string;
-  lastname: string;
-  email: string;
-  dateOfBirth: string;
-  gender: string;
-  address: string;
-  religion: string;
-  driverLicenseNumber: string;
-  medicalInsuranceMemberNumber: string;
-  taxNumber: string;
-  socialSecurityNumber: string;
-};
-
-const defaultForm: ProfileFormState = {
-  firstname: "",
-  lastname: "",
-  email: "",
-  dateOfBirth: "",
-  gender: "",
-  address: "",
-  religion: "",
-  driverLicenseNumber: "",
-  medicalInsuranceMemberNumber: "",
-  taxNumber: "",
-  socialSecurityNumber: "",
-};
-
-function toDateOnly(value?: string | null): string {
-  return value ? value.slice(0, 10) : "";
-}
-
-function toFormState(profile: PatientProfile): ProfileFormState {
-  return {
-    firstname: profile.firstname ?? "",
-    lastname: profile.lastname ?? "",
-    email: profile.email ?? "",
-    dateOfBirth: toDateOnly(profile.dateOfBirth),
-    gender: profile.gender ?? "",
-    address: profile.address ?? "",
-    religion: profile.religion ?? "",
-    driverLicenseNumber: profile.driverLicenseNumber ?? "",
-    medicalInsuranceMemberNumber: profile.medicalInsuranceMemberNumber ?? "",
-    taxNumber: profile.taxNumber ?? "",
-    socialSecurityNumber: profile.socialSecurityNumber ?? "",
-  };
-}
-
-function toErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return fallback;
-}
+import {
+  defaultForm,
+  type ProfileFormState,
+  type ProfileFormErrors,
+} from "./components/profileTypes";
+import {
+  genderOptions,
+  getFieldErrors,
+  toFormState,
+  toErrorMessage,
+} from "./components/profileUtilities";
+import { ProfileAppointments } from "./components/ProfileAppointments";
 
 export default function PatientProfilePage() {
   const router = useRouter();
@@ -79,8 +33,9 @@ export default function PatientProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileFormState>(defaultForm);
+  const [fieldErrors, setFieldErrors] = useState<ProfileFormErrors>({});
   const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
-  const [showOlderAppointments, setShowOlderAppointments] = useState(false);
+
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -110,8 +65,9 @@ export default function PatientProfilePage() {
         ]);
 
         if (!active) return;
+        console.log(profileResponse, appointmentResponse);
 
-        setForm(toFormState(profileResponse.data));
+        setForm(toFormState(profileResponse));
         setAppointments(appointmentResponse.data ?? []);
       } catch (err: unknown) {
         if (!active) return;
@@ -132,24 +88,15 @@ export default function PatientProfilePage() {
     };
   }, [logout, router, token, hasHydrated]);
 
-  const sortedAppointments = useMemo(() => {
-    return [...appointments].sort(
-      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
-    );
-  }, [appointments]);
-
-  const { upcomingAppointments, pastAppointments } = useMemo(() => {
-    const now = Date.now();
-    const upcoming = sortedAppointments.filter((item) => new Date(item.startAt).getTime() >= now);
-    const past = sortedAppointments
-      .filter((item) => new Date(item.startAt).getTime() < now)
-      .reverse();
-    return { upcomingAppointments: upcoming, pastAppointments: past };
-  }, [sortedAppointments]);
-
   const setField = (field: keyof ProfileFormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (saveMessage) setSaveMessage(null);
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
@@ -165,6 +112,7 @@ export default function PatientProfilePage() {
     setSaving(true);
     setLoadError(null);
     setSaveMessage(null);
+    setFieldErrors({});
 
     try {
       await PatientsService.update(patientId, {
@@ -189,13 +137,19 @@ export default function PatientProfilePage() {
         dateOfBirth: form.dateOfBirth || null,
       });
       setSaveMessage("Profile updated.");
+      setEditing(false);
     } catch (err: unknown) {
       if (isApiError(err) && err.status === 401) {
         logout();
         router.replace("/auth/login");
         return;
       }
-      setLoadError(toErrorMessage(err, "Failed to update profile."));
+
+      const errors = getFieldErrors(err);
+      setFieldErrors(errors);
+
+      const hasFieldErrors = Object.keys(errors).length > 0;
+      setLoadError(hasFieldErrors ? null : toErrorMessage(err, "Failed to update profile."));
     } finally {
       setSaving(false);
     }
@@ -248,6 +202,7 @@ export default function PatientProfilePage() {
                 name="firstname"
                 value={form.firstname}
                 onChange={(event) => setField("firstname", event.target.value)}
+                error={fieldErrors.firstname}
                 className="disabled:opacity-80"
               />
               <InputField
@@ -255,6 +210,7 @@ export default function PatientProfilePage() {
                 name="lastname"
                 value={form.lastname}
                 onChange={(event) => setField("lastname", event.target.value)}
+                error={fieldErrors.lastname}
                 className="disabled:opacity-80"
               />
               <InputField
@@ -263,6 +219,7 @@ export default function PatientProfilePage() {
                 type="email"
                 value={form.email}
                 onChange={(event) => setField("email", event.target.value)}
+                error={fieldErrors.email}
                 className="disabled:opacity-80"
               />
               <InputField
@@ -271,6 +228,7 @@ export default function PatientProfilePage() {
                 type="date"
                 value={form.dateOfBirth}
                 onChange={(event) => setField("dateOfBirth", event.target.value)}
+                error={fieldErrors.dateOfBirth}
                 className="disabled:opacity-80"
               />
             </div>
@@ -281,18 +239,20 @@ export default function PatientProfilePage() {
           <h2 className="text-xl font-semibold text-foreground">Additional Information</h2>
           <fieldset disabled={!editing || saving}>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <InputField
+              <SelectField
+                placeholder="Select a gender"
+                value={form.gender}
                 label="Gender"
                 name="gender"
-                value={form.gender}
-                onChange={(event) => setField("gender", event.target.value)}
-                className="disabled:opacity-80"
+                options={genderOptions}
+                onChange={(value) => setField("gender", value)}
               />
               <InputField
                 label="Religion"
                 name="religion"
                 value={form.religion}
                 onChange={(event) => setField("religion", event.target.value)}
+                error={fieldErrors.religion}
                 className="disabled:opacity-80"
               />
               <label className="md:col-span-2 flex flex-col gap-1.5 text-sm">
@@ -302,14 +262,26 @@ export default function PatientProfilePage() {
                   value={form.address}
                   onChange={(event) => setField("address", event.target.value)}
                   rows={3}
-                  className="w-full rounded-[var(--radius-lg)] border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft"
+                  aria-invalid={fieldErrors.address ? true : undefined}
+                  aria-describedby={fieldErrors.address ? "address-error" : undefined}
+                  className={`w-full rounded-[var(--radius-lg)] border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 ${
+                    fieldErrors.address
+                      ? "border-error focus:border-error focus:ring-error-soft"
+                      : "border-border focus:border-primary focus:ring-primary-soft"
+                  }`}
                 />
+                {fieldErrors.address ? (
+                  <p id="address-error" className="text-sm text-error">
+                    {fieldErrors.address}
+                  </p>
+                ) : null}
               </label>
               <InputField
                 label="Driver License Number"
                 name="driverLicenseNumber"
                 value={form.driverLicenseNumber}
                 onChange={(event) => setField("driverLicenseNumber", event.target.value)}
+                error={fieldErrors.driverLicenseNumber}
                 autoComplete="off"
                 className="disabled:opacity-80"
               />
@@ -318,6 +290,7 @@ export default function PatientProfilePage() {
                 name="medicalInsuranceMemberNumber"
                 value={form.medicalInsuranceMemberNumber}
                 onChange={(event) => setField("medicalInsuranceMemberNumber", event.target.value)}
+                error={fieldErrors.medicalInsuranceMemberNumber}
                 autoComplete="off"
                 className="disabled:opacity-80"
               />
@@ -326,14 +299,16 @@ export default function PatientProfilePage() {
                 name="taxNumber"
                 value={form.taxNumber}
                 onChange={(event) => setField("taxNumber", event.target.value)}
+                error={fieldErrors.taxNumber}
                 autoComplete="off"
                 className="disabled:opacity-80"
               />
               <InputField
-                label="Social Security Number"
+                label="Birth Number"
                 name="socialSecurityNumber"
                 value={form.socialSecurityNumber}
                 onChange={(event) => setField("socialSecurityNumber", event.target.value)}
+                error={fieldErrors.socialSecurityNumber}
                 autoComplete="off"
                 className="disabled:opacity-80"
               />
@@ -373,48 +348,7 @@ export default function PatientProfilePage() {
         </section>
       </form>
 
-      <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-3 text-wrap">
-          <h2 className="text-xl font-semibold text-foreground">Appointments</h2>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {upcomingAppointments.length === 0 ? (
-            <div className="rounded-xl border border-border bg-background/70 px-4 py-3 text-sm text-muted">
-              No upcoming appointments.
-            </div>
-          ) : (
-            upcomingAppointments.map((appointment) => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
-            ))
-          )}
-        </div>
-        {pastAppointments.length > 0 ? (
-          <div className="mt-5 text-center">
-            <button
-              type="button"
-              onClick={() => setShowOlderAppointments((prev) => !prev)}
-              className="rounded-xl border border-secondary px-4 py-2 text-sm font-medium text-secondary transition hover:bg-secondary-soft"
-            >
-              {showOlderAppointments
-                ? "Hide older appointments"
-                : `Show older appointments (${pastAppointments.length})`}
-            </button>
-          </div>
-        ) : null}
-        {showOlderAppointments ? (
-          <div className="mt-6">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
-              Older appointments
-            </h3>
-            <div className="mt-3 space-y-3">
-              {pastAppointments.map((appointment) => (
-                <AppointmentCard key={appointment.id} appointment={appointment} />
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
+      <ProfileAppointments appointments={appointments} />
     </div>
   );
 }

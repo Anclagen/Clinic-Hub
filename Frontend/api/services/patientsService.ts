@@ -17,12 +17,6 @@ export type PatientProfile = {
   socialSecurityNumber?: string | null;
 };
 
-export type PatientProfileResponse = {
-  data: PatientProfile;
-  role?: string;
-  sub?: string;
-};
-
 export type PatientProfileUpdatePayload = Partial<{
   firstname: string;
   lastname: string;
@@ -61,7 +55,7 @@ export function resolveCurrentPatientId(): string | null {
 
 export const PatientsService = {
   byId: (id: string) =>
-    api<PatientProfileResponse>({
+    api<PatientProfile>({
       path: `/patients/${id}`,
       auth: true,
     }),
