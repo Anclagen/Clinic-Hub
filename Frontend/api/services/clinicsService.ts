@@ -1,4 +1,5 @@
 import { api } from "../index";
+import { PagedResponse } from "../apiTypes";
 
 export type Clinic = {
   id: number;
@@ -19,6 +20,6 @@ export type ClinicDoctorOption = {
 };
 
 export const ClinicsService = {
-  all: () => api<Clinic[]>({ path: "/clinics/", auth: false }),
+  all: () => api<PagedResponse<Clinic>>({ path: "/clinics/", auth: false }),
   byId: (id: number) => api<Clinic>({ path: `/clinics/${id}`, auth: false }),
 };

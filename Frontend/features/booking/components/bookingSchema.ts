@@ -29,6 +29,7 @@ export const bookingFormSchema = z.object({
     (value) => parseInputDate(value) <= new Date(),
     "Date of birth cannot be in the future",
   ),
+  email: z.email(),
   clinicId: requiredIntId("Clinic"),
   categoryId: requiredIntId("Category"),
   doctorId: z.string().trim().uuid("Doctor must be a valid UUID"),

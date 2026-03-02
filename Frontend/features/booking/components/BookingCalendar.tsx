@@ -36,8 +36,6 @@ export function BookingCalendar({
   loadingBookings,
   hasError,
 }: Props) {
-  const selectedStart = useMemo(() => (value ? parseISO(value) : null), [value]);
-
   const bookedForDay = useMemo(() => {
     if (!selectedDate) return [];
     const map = booked

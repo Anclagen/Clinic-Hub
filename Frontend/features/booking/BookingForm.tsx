@@ -17,6 +17,10 @@ import { isApiError, getUnknownMessage } from "@/api/errors";
 
 import { BookingCalendar, type AppointmentRange } from "./components/BookingCalendar";
 import { BookingCalendarSkeleton } from "./components/BookingCalendarSkeleton";
+import AppointmentCard from "../appointment/components/AppointmentCard";
+import { PatientAppointment } from "@/api/services/appointmentsService";
+import Link from "next/link";
+import { Button } from "../UI/Button";
 
 type ClinicOption = { id: number; clinicName: string };
 
@@ -24,6 +28,7 @@ type FormState = {
   firstname: string;
   lastname: string;
   dateOfBirth: string;
+  email: string;
   clinicId: string;
   categoryId: string;
   doctorId: string;
@@ -34,6 +39,7 @@ const defaultForm: FormState = {
   firstname: "",
   lastname: "",
   dateOfBirth: "",
+  email: "",
   clinicId: "",
   categoryId: "",
   doctorId: "",
@@ -64,6 +70,7 @@ export default function BookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [bookingFetchFailed, setBookingFetchFailed] = useState(false);
+  const [appointment, setAppointment] = useState<PatientAppointment | null>(null);
 
   const [form, setForm] = useState<FormState>(defaultForm);
   const [bookings, setBookings] = useState<AppointmentRange[]>([]);
@@ -74,19 +81,22 @@ export default function BookingPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(selectedStart);
 
   // auth prefill
+  const id = useAuthStore((s) => s.id);
   const firstname = useAuthStore((s) => s.firstname);
   const lastname = useAuthStore((s) => s.lastname);
   const dateOfBirth = useAuthStore((s) => s.dateOfBirth);
+  const email = useAuthStore((s) => s.email);
   const logout = useAuthStore((s) => s.logout);
 
   const didPrefill = useRef(false);
-  useEffect(() => {
-    if (didPrefill.current) return;
-    if (!firstname || !lastname || !dateOfBirth) return;
 
-    setForm((prev) => ({ ...prev, firstname, lastname, dateOfBirth }));
+  useEffect(() => {
+    if (!firstname || !lastname || !dateOfBirth || !email) return setForm(defaultForm);
+    if (didPrefill.current) return;
+
+    setForm((prev) => ({ ...prev, firstname, lastname, dateOfBirth, email }));
     didPrefill.current = true;
-  }, [firstname, lastname, dateOfBirth]);
+  }, [firstname, lastname, dateOfBirth, email]);
 
   const setField = useCallback((key: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -107,8 +117,8 @@ export default function BookingPage() {
 
         if (!active) return;
 
-        setClinics(clinicList.map((c) => ({ id: c.id, clinicName: c.clinicName })));
-        setCategories(categoryList);
+        setClinics(clinicList.data.map((c) => ({ id: c.id, clinicName: c.clinicName })));
+        setCategories(categoryList.data);
       } catch (e) {
         if (!active) return;
         setError(e instanceof Error ? e.message : "Failed to load options.");
@@ -188,17 +198,17 @@ export default function BookingPage() {
         const toDate = new Date(safeSelectedDate);
         toDate.setHours(23, 59, 59, 999);
         const to = toDate.toISOString();
-
         const result = await AppointmentsService.bookedTimes(form.doctorId, from, to);
         if (active) setBookings(result ?? []);
       } catch (e) {
         if (active) {
           setBookings([]);
-          setBookingFetchFailed(true); // <--- Triggers the UI lock
+          setBookingFetchFailed(true);
           setError(e instanceof Error ? e.message : "Failed to load availability.");
         }
       } finally {
         if (active) setLoadingBookings(false);
+        console.log(bookings);
       }
     }
 
@@ -206,7 +216,7 @@ export default function BookingPage() {
     return () => {
       active = false;
     };
-  }, [form.doctorId, selectedDate]);
+  }, [form.doctorId, selectedDate, form.categoryId]);
 
   const handleCalendarChange = useCallback(
     (iso: string) => {
@@ -231,9 +241,11 @@ export default function BookingPage() {
     }
 
     const payload = {
+      patientId: id ? id : null,
       firstname: form.firstname,
       lastname: form.lastname,
       dateOfBirth: form.dateOfBirth,
+      email: form.email,
       clinicId: Number(form.clinicId),
       categoryId: Number(form.categoryId),
       doctorId: form.doctorId,
@@ -242,31 +254,53 @@ export default function BookingPage() {
     };
 
     try {
-      await AppointmentsService.create(payload);
-      router.push("/booking/success"); // adjust to your route
+      const response = await AppointmentsService.create(payload);
+      setAppointment(response);
     } catch (err: unknown) {
       if (isApiError(err)) {
         if (err.status === 401) {
           logout();
-          router.push("/auth/login");
+          router.push("/auth/login?expired=true");
           return;
         }
         if (err.status === 409) {
           setErrors({ appointmentStartAt: err.message });
           return;
         }
-        setError(err.message);
+        if (err.status === 400) setError(err.message);
         return;
       }
       setError(getUnknownMessage(err));
     }
   };
 
-  if (loadingOptions) return <BookingLoading />;
+  const resetFormHandler = () => {
+    setAppointment(null);
+    setForm(defaultForm);
+  };
 
+  if (loadingOptions) return <BookingLoading />;
+  if (appointment)
+    return (
+      <>
+        <h2 className="text-2xl font-semibold text-foreground mb-4">Appointment Created</h2>
+        <AppointmentCard appointment={appointment} />
+        <Button variant="secondary" className="mt-4" onClick={resetFormHandler}>
+          Book Another Appointment
+        </Button>
+      </>
+    );
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <h2 className="text-2xl font-semibold text-foreground">Book an Appointment</h2>
+      {!firstname || !lastname || !dateOfBirth || !email ? (
+        <p className="md:hidden">
+          Have an account?{" "}
+          <Link href={"/auth/login"} className="text-secondary">
+            Please login before booking.
+          </Link>
+        </p>
+      ) : null}
 
       {error ? (
         <div className="mt-3 rounded-xl border border-error bg-error-soft px-4 py-3 text-sm text-error">
@@ -303,6 +337,17 @@ export default function BookingPage() {
           onChange={(event) => setField("dateOfBirth", event.target.value)}
           error={errors.dateOfBirth}
           disabled={dateOfBirth ? true : false}
+        />
+
+        <InputField
+          label="Email"
+          name="email"
+          type="email"
+          placeholder="jane_doe@example.com"
+          value={form.email}
+          onChange={(event) => setField("email", event.target.value)}
+          error={errors.email}
+          disabled={email ? true : false}
         />
 
         <SelectField
@@ -359,7 +404,7 @@ export default function BookingPage() {
         />
 
         <div className="md:col-span-2">
-          {!form.doctorId || loadingDoctors ? (
+          {!form.doctorId || !form.categoryId || loadingDoctors ? (
             <BookingCalendarSkeleton />
           ) : (
             <>
@@ -385,6 +430,25 @@ export default function BookingPage() {
             <div className="mt-2 text-sm text-error">{errors.appointmentStartAt}</div>
           ) : null}
         </div>
+        <div className="md:col-span-2">
+          {!firstname || !lastname || !dateOfBirth || !email ? (
+            <p>
+              Have an account?{" "}
+              <Link href={"/auth/login"} className="text-secondary">
+                Please login before booking.
+              </Link>
+            </p>
+          ) : null}
+        </div>
+
+        {error ? (
+          <div className="md:col-span-2 md:hidden">
+            <div className="mt-3 rounded-xl border border-error bg-error-soft px-4 py-3 text-sm text-error">
+              {error}
+            </div>
+          </div>
+        ) : null}
+
         <div className="md:col-span-2">
           <button
             type="submit"

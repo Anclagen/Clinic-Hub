@@ -62,6 +62,12 @@ https://www.milanjovanovic.tech/blog/functional-error-handling-in-dotnet-with-th
 https://andrewlock.net/handling-web-api-exceptions-with-problemdetails-middleware/
 https://docs.fluentvalidation.net/en/latest/aspnet.html
 
+dates the great clusterf\*\*k
+https://www.tinybird.co/blog/database-timestamps-timezones
+https://date-fns.org/
+https://github.com/marnusw/date-fns-tz#readme
+Gemini, ChatGTP were both helpful and a hindrance in getting these working.
+
 PII
 _Based on course material defining non-sensitive PII as publicly available demographic information (including gender and religion), guest users are permitted to store a limited subset of non-sensitive PII. For guest bookings, only first name, last name, email, and optionally birthdate, gender, and religion are stored. Sensitive PII such as government identifiers, tax numbers, insurance numbers, and authentication credentials are restricted to registered patients and never stored for guest users._
 

@@ -1,20 +1,9 @@
 import { api } from "../index";
+import { PagedResponse } from "../apiTypes";
 
 export type BookedTimeSlot = {
   startAt: string;
   endAt: string;
-};
-
-export type Pagination = {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-};
-
-export type PagedResponse<T> = {
-  data: T[];
-  pagination: Pagination;
 };
 
 export type PatientAppointment = {

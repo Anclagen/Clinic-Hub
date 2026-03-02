@@ -1,4 +1,5 @@
 import { api } from "../index";
+import { PagedResponse } from "../apiTypes";
 
 export type Speciality = {
   id: number;
