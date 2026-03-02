@@ -42,7 +42,7 @@ export const InputField = React.forwardRef<HTMLInputElement, Props>(
           type={type}
           placeholder={placeholder}
           onChange={handleChange}
-          className={`w-full rounded-[var(--radius-lg)] border bg-card px-3 py-2 text-sm text-foreground outline-none border-border focus:ring-2 focus:ring-primary-soft focus:border-primary ${error ? "border-error focus:ring-error-soft focus:border-error" : ""} ${className}`}
+          className={`w-full rounded-[var(--radius-lg)] disabled:bg-primary-soft disabled:opacity-90 border bg-card px-3 py-2 text-sm text-foreground outline-none border-border focus:ring-2 focus:ring-primary-soft focus:border-primary ${error ? "border-error focus:ring-error-soft focus:border-error" : ""} ${className}`}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${inputId}-error` : undefined}
           {...props}

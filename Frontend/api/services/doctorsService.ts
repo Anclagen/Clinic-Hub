@@ -13,7 +13,7 @@ export type Doctor = {
 };
 
 export type DoctorsQuery = {
-  q?: string;
+  query?: string;
   clinicId?: number;
   specialityId?: number;
   page?: number;
@@ -23,7 +23,7 @@ export type DoctorsQuery = {
 export const DoctorsService = {
   all: (query: DoctorsQuery = {}) =>
     api<PagedResponse<Doctor>>({
-      path: "/doctors/",
+      path: "/doctors/search",
       query: { page: 1, pageSize: 10, ...query },
       auth: false,
     }),

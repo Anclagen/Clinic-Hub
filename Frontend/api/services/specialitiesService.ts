@@ -8,6 +8,6 @@ export type Speciality = {
 };
 
 export const SpecialitiesService = {
-  all: () => api<Speciality[]>({ path: "/specialities/", auth: false }),
+  all: () => api<PagedResponse<Speciality>>({ path: "/specialities/", auth: false }),
   byId: (id: number) => api<Speciality>({ path: `/specialities/${id}`, auth: false }),
 };

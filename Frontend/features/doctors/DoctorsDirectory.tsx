@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ClinicsService, type Clinic } from "@/api/services/clinicsService";
 import { SpecialitiesService, type Speciality } from "@/api/services/specialitiesService";
 import { DoctorsGrid, type DoctorsQuery } from "./components/DoctorsGrid";
@@ -37,8 +37,8 @@ export function DoctorsDirectory() {
           SpecialitiesService.all(),
         ]);
         if (!active) return;
-        setClinics(clinicList);
-        setSpecialities(specialityList);
+        setClinics(clinicList.data);
+        setSpecialities(specialityList.data);
       } catch (e) {
         if (!active) return;
         setFiltersError(e instanceof Error ? e.message : "Failed to load filters.");
@@ -53,11 +53,14 @@ export function DoctorsDirectory() {
     };
   }, []);
 
-  const query: DoctorsQuery = {
-    q: debouncedSearch || undefined,
-    clinicId: selectedClinicId ? Number(selectedClinicId) : undefined,
-    specialityId: selectedSpecialityId ? Number(selectedSpecialityId) : undefined,
-  };
+  const query = useMemo(
+    (): DoctorsQuery => ({
+      query: debouncedSearch || undefined,
+      clinicId: selectedClinicId ? Number(selectedClinicId) : undefined,
+      specialityId: selectedSpecialityId ? Number(selectedSpecialityId) : undefined,
+    }),
+    [debouncedSearch, selectedClinicId, selectedSpecialityId],
+  );
 
   const showFiltersSkeleton =
     loadingFilters && clinics.length === 0 && specialities.length === 0 && !filtersError;

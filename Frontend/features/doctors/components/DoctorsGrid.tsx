@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DoctorsService, type Doctor, type Pagination } from "@/api/services/doctorsService";
+import { DoctorsService, type Doctor } from "@/api/services/doctorsService";
+import { Pagination } from "@/api/apiTypes";
 import { DoctorCard } from "./DoctorCard";
 import { DoctorsGridSkeleton } from "./DoctorsGridSkeleton";
 import { PaginationControls } from "../../UI/PaginationControls";
 
 export type DoctorsQuery = {
-  q?: string;
+  query?: string;
   clinicId?: number;
   specialityId?: number;
 };
@@ -33,7 +34,7 @@ export function DoctorsGrid({ query, pageSize = 10, title }: DoctorsGridProps) {
   // reset page when query changes
   useEffect(() => {
     setPagination((p) => ({ ...p, page: 1 }));
-  }, [query.q, query.clinicId, query.specialityId]);
+  }, [query.query, query.clinicId, query.specialityId]);
 
   useEffect(() => {
     let active = true;
@@ -64,7 +65,7 @@ export function DoctorsGrid({ query, pageSize = 10, title }: DoctorsGridProps) {
     return () => {
       active = false;
     };
-  }, [query.q, query.clinicId, query.specialityId, pagination.page, pageSize]);
+  }, [query.query, query.clinicId, query.specialityId, pagination.page, pageSize, query]);
 
   return (
     <section className="mt-6">
