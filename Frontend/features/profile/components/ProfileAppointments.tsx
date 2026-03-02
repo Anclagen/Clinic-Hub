@@ -3,12 +3,16 @@ import { useMemo, useState } from "react";
 import { PatientAppointment } from "@/api/services/appointmentsService";
 import AppointmentCard from "../../appointment/components/AppointmentCard";
 
-export function ProfileAppointments({ appointments }: { appointments: PatientAppointment[] }) {
+export function ProfileAppointments({
+  appointments,
+  now,
+}: {
+  appointments: PatientAppointment[];
+  now: number;
+}) {
   const [showOlderAppointments, setShowOlderAppointments] = useState(false);
-  const [now, setNow] = useState<number | null>(null);
 
   const { upcomingAppointments, pastAppointments } = useMemo(() => {
-    const now = Date.now();
     const sorted = [...appointments].sort(
       (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
     );
@@ -17,7 +21,7 @@ export function ProfileAppointments({ appointments }: { appointments: PatientApp
       upcomingAppointments: sorted.filter((a) => new Date(a.startAt).getTime() >= now),
       pastAppointments: sorted.filter((a) => new Date(a.startAt).getTime() < now).reverse(),
     };
-  }, [appointments]);
+  }, [appointments, now]);
 
   return (
     <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">

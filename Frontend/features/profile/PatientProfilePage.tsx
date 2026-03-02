@@ -348,7 +348,7 @@ export default function PatientProfilePage() {
         </section>
       </form>
 
-      <ProfileAppointments appointments={appointments} />
+      <ProfileAppointments appointments={appointments} now={Date.now()} />
     </div>
   );
 }
