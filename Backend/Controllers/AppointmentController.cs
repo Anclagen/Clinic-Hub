@@ -150,7 +150,7 @@ namespace Backend.Controllers
             CategoryId = d.CategoryId,
             CategoryName = d.Category.CategoryName,
             Duration = d.DurationMinutes,
-            StartAt = d.StartAt,
+            StartAt = DateTime.SpecifyKind(d.StartAt, DateTimeKind.Utc),
             ClinicId = d.ClinicId,
             ClinicName = d.Clinic.ClinicName,
             DoctorId = d.DoctorId,
@@ -209,7 +209,7 @@ namespace Backend.Controllers
             ClinicName = a.Clinic.ClinicName,
             DoctorId = a.DoctorId,
             DoctorName = a.Doctor.Firstname + " " + a.Doctor.Lastname,
-            StartAt = a.StartAt
+            StartAt = DateTime.SpecifyKind(a.StartAt, DateTimeKind.Utc)
           })
           .FirstOrDefaultAsync();
       if (appointment is null)
@@ -262,8 +262,8 @@ namespace Backend.Controllers
               .OrderBy(a => a.StartAt)
               .Select(a => new BookedTimeSlotDTO
               {
-                StartAt = a.StartAt,
-                EndAt = a.StartAt.AddMinutes(a.DurationMinutes)
+                StartAt = DateTime.SpecifyKind(a.StartAt, DateTimeKind.Utc),
+                EndAt = DateTime.SpecifyKind(a.StartAt.AddMinutes(a.DurationMinutes), DateTimeKind.Utc)
               })
               .ToListAsync();
 
@@ -448,7 +448,7 @@ namespace Backend.Controllers
           DoctorName = $"{finalAppointment.Doctor.Firstname} {finalAppointment.Doctor.Lastname}",
           ClinicId = finalAppointment.ClinicId,
           ClinicName = finalAppointment.Clinic.ClinicName,
-          StartAt = finalAppointment.StartAt,
+          StartAt = DateTime.SpecifyKind(finalAppointment.StartAt, DateTimeKind.Utc),
           Duration = finalAppointment.DurationMinutes,
         };
 
@@ -550,7 +550,7 @@ namespace Backend.Controllers
             DoctorName = $"{a.Doctor.Firstname} {a.Doctor.Lastname}",
             ClinicId = a.ClinicId,
             ClinicName = a.Clinic.ClinicName,
-            StartAt = a.StartAt,
+            StartAt = DateTime.SpecifyKind(a.StartAt, DateTimeKind.Utc),
             Duration = a.DurationMinutes
           })
           .FirstAsync(a => a.Id == id);

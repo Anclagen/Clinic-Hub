@@ -172,7 +172,7 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Registers a new doctor into the system.
+    /// Registers a new doctor into the system (Admin Only).
     /// </summary>
     /// <remarks>
     /// **Authorization:** Requires an 'Admin' role claim.
@@ -221,7 +221,7 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Updates an existing doctor's profile and returns the updated record.
+    /// Updates an existing doctor's profile and returns the updated record (Admin Only).
     /// </summary>
     /// <remarks>
     /// **Partial Updates:** Only provide the fields you wish to change.
@@ -288,7 +288,7 @@ namespace Backend.Controllers
     }
 
     /// <summary>
-    /// Removes a doctor from the directory.
+    /// Removes a doctor from the directory (Admin Only).
     /// </summary>
     /// <remarks>
     /// **Safety Check:** /// To preserve historical data, a doctor cannot be deleted if they are linked to any existing appointments. 

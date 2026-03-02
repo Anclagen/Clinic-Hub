@@ -1,7 +1,11 @@
-import { addMinutes, areIntervalsOverlapping, format, set, isSameDay, isAfter } from "date-fns";
+import { addMinutes, areIntervalsOverlapping, format, isSameDay, isAfter } from "date-fns";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
+
+const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "UTC";
 
 export function toLocalTimeLabel(d: Date) {
-  return format(d, "HH:mm");
+  const zoned = toZonedTime(d, APP_TIMEZONE);
+  return format(zoned, "HH:mm");
 }
 
 export function buildSlotsForDay(args: {
@@ -13,31 +17,28 @@ export function buildSlotsForDay(args: {
 }) {
   const { day, dayStartHour, dayEndHour, intervalMinutes, durationMinutes } = args;
 
-  const dayStart = set(day, {
-    hours: dayStartHour,
-    minutes: 0,
-  });
-  const dayEnd = set(day, {
-    hours: dayEndHour,
-    minutes: 0,
-  });
-  const now = new Date();
-  const isSelectedDayToday = isSameDay(day, now);
+  const dayStart = fromZonedTime(
+    new Date(day.getFullYear(), day.getMonth(), day.getDate(), dayStartHour),
+    APP_TIMEZONE,
+  );
 
+  const dayEnd = fromZonedTime(
+    new Date(day.getFullYear(), day.getMonth(), day.getDate(), dayEndHour),
+    APP_TIMEZONE,
+  );
+
+  const now = new Date();
   const slots: Array<{ start: Date; end: Date }> = [];
-  for (
-    let start = dayStart;
-    addMinutes(start, durationMinutes) <= dayEnd;
-    start = addMinutes(start, intervalMinutes)
-  ) {
-    const end = addMinutes(start, durationMinutes);
-    if (isSelectedDayToday) {
-      if (isAfter(start, now)) {
-        slots.push({ start, end });
-      }
-    } else {
-      slots.push({ start, end });
+
+  let current = dayStart;
+  while (addMinutes(current, durationMinutes) <= dayEnd) {
+    const slotEnd = addMinutes(current, durationMinutes);
+
+    if (isAfter(current, now)) {
+      slots.push({ start: current, end: slotEnd });
     }
+
+    current = addMinutes(current, intervalMinutes);
   }
   return slots;
 }
