@@ -4,16 +4,48 @@ import Link from "next/link";
 import { toZonedTime } from "date-fns-tz";
 import { format } from "date-fns";
 import { useAuthStore } from "@/stores/authStore";
+import { AppointmentsService } from "@/api/services/appointmentsService";
+import { useState } from "react";
+import { Spinner } from "@/features/UI/Spinner";
 
 const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "UTC";
 
 export default function AppointmentCard({ appointment }: { appointment: PatientAppointment }) {
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [awaitingResponse, setAwaitingResponse] = useState(false);
+  const [error, setError] = useState<null | string>(null);
+  const [isDeleted, setIsDeleted] = useState(false);
   const utcDate = new Date(appointment.startAt);
   const zonedDate = toZonedTime(utcDate, APP_TIMEZONE);
   const displayDate = format(zonedDate, "EEE, MMM d, yyyy, HH:mm");
   const isFuture = utcDate > new Date();
   const id = useAuthStore((s) => s.id);
   const canEdit = isFuture && id !== null;
+
+  const toggleCancellation = () => {
+    setIsCancelling(!isCancelling);
+  };
+
+  const confirmCancellation = async () => {
+    setAwaitingResponse(true);
+    try {
+      await AppointmentsService.cancel(appointment.id);
+      setAwaitingResponse(false);
+      setIsDeleted(true);
+    } catch (error) {
+      setAwaitingResponse(false);
+      setError("An error occurred.");
+    }
+  };
+
+  if (isDeleted)
+    return (
+      <div className="rounded-xl border border-border bg-background/70 p-4 shadow-sm">
+        <p className="text-sm font-semibold text-foreground uppercase tracking-wider">
+          Appointment Deleted
+        </p>
+      </div>
+    );
 
   return (
     <article className="rounded-xl border border-border bg-background/70 p-4 shadow-sm">
@@ -34,17 +66,54 @@ export default function AppointmentCard({ appointment }: { appointment: PatientA
       </div>
 
       {canEdit && (
-        <div className="mt-6 flex gap-3">
-          <Link
-            href={`/profile/appointment/${appointment.id}`}
-            className="flex-1 text-center bg-primary rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
-          >
-            Edit
-          </Link>
-          <button className="flex-1 text-center border border-error text-error rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold transition hover:bg-error-soft">
-            Cancel
-          </button>
-        </div>
+        <>
+          {error ? (
+            <div className="mt-3 rounded-xl border border-error bg-error-soft px-4 py-3 text-sm text-error">
+              {error}
+            </div>
+          ) : null}
+          <div className="mt-6 flex gap-3">
+            {isCancelling ? (
+              <>
+                <button
+                  onClick={confirmCancellation}
+                  disabled={awaitingResponse}
+                  className="flex-1 text-center border border-error-soft bg-error text-white rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold transition hover:bg-error-soft hover:border-error hover:text-error"
+                >
+                  {awaitingResponse ? (
+                    <span className="flex justify-center gap-3">
+                      <Spinner /> Cancelling...
+                    </span>
+                  ) : (
+                    "Confirm Cancellation"
+                  )}
+                </button>
+                <button
+                  onClick={toggleCancellation}
+                  disabled={awaitingResponse}
+                  className={`flex-1 text-center border border-error text-error rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold transition hover:bg-error-soft ${awaitingResponse ? "disabled:opacity-50" : ""}`}
+                >
+                  Cancel Cancellation
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={`/profile/appointment/${appointment.id}`}
+                  className="flex-1 text-center bg-primary rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={toggleCancellation}
+                  className="flex-1 text-center border border-error text-error rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold transition hover:bg-error-soft"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
     </article>
   );

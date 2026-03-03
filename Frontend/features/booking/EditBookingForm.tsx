@@ -56,7 +56,7 @@ const appointmentEnd = process.env.NEXT_PUBLIC_APPOINTMENT_END
   ? Number(process.env.NEXT_PUBLIC_APPOINTMENT_END)
   : 16;
 
-export default function BookingPage() {
+export default function EditBookingForm() {
   const router = useRouter();
 
   const [clinics, setClinics] = useState<ClinicOption[]>([]);
