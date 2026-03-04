@@ -11,7 +11,6 @@ export default async function ClinicDetailsPage({ params }: AppointmentPageProps
 
   return (
     <>
-      <h1>Edit appointment</h1>
       <AppointmentDetails appointmentId={id} />
     </>
   );

@@ -21,6 +21,7 @@ import AppointmentCard from "../appointment/components/AppointmentCard";
 import { PatientAppointment } from "@/api/services/appointmentsService";
 import Link from "next/link";
 import { Button } from "../UI/Button";
+import { appointmentEnd, appointmentInterval, appointmentStart } from "./components/variables";
 
 type ClinicOption = { id: number; clinicName: string };
 
@@ -45,16 +46,6 @@ const defaultForm: FormState = {
   doctorId: "",
   appointmentStartAt: "",
 };
-
-const appointmentInterval = process.env.NEXT_PUBLIC_APPOINTMENT_INTERVAL
-  ? Number(process.env.NEXT_PUBLIC_APPOINTMENT_INTERVAL)
-  : 15;
-const appointmentStart = process.env.NEXT_PUBLIC_APPOINTMENT_START
-  ? Number(process.env.NEXT_PUBLIC_APPOINTMENT_START)
-  : 8;
-const appointmentEnd = process.env.NEXT_PUBLIC_APPOINTMENT_END
-  ? Number(process.env.NEXT_PUBLIC_APPOINTMENT_END)
-  : 16;
 
 export default function BookingPage() {
   const router = useRouter();
@@ -208,7 +199,6 @@ export default function BookingPage() {
         }
       } finally {
         if (active) setLoadingBookings(false);
-        console.log(bookings);
       }
     }
 

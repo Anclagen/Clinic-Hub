@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppointmentsService, type PatientAppointment } from "@/api/services/appointmentsService";
-import EditBookingForm from "../booking/EditBookingForm";
+import { EditBookingForm } from "../booking/EditBookingForm";
+import { AppointmentDetailsSkeleton } from "./components/AppointmentDetailsSkeleton";
 
 type AppointmentProps = {
   appointmentId: string;
@@ -19,7 +20,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 export function AppointmentDetails({ appointmentId }: AppointmentProps) {
-  const [appointment, setAppointment] = useState<PatientAppointment | null>(null);
+  const [appointment, setAppointment] = useState<PatientAppointment>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,16 +51,14 @@ export function AppointmentDetails({ appointmentId }: AppointmentProps) {
   }, [appointmentId]);
 
   if (loading) {
-    return <h1>Loading</h1>;
-    // return <AppointmentDetailsSkeleton />;
+    return <AppointmentDetailsSkeleton />;
   }
 
   const start = new Date(appointment.startAt);
-  console.log(appointment?.startAt);
 
   if (error || !appointment) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-8">
+      <div className="mx-auto w-full max-w-6xl md:px-4 py-8">
         <Link href="/profile" className="text-sm font-medium text-primary hover:text-primary-hover">
           Back to profile
         </Link>
@@ -71,13 +70,13 @@ export function AppointmentDetails({ appointmentId }: AppointmentProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8">
+    <div className="mx-auto w-full max-w-6xl md:px-4 py-8 ">
       <Link href="/profile" className="text-sm font-medium text-primary hover:text-primary-hover">
         Back to profile
       </Link>
 
-      <section className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex items-start gap-4">
+      <section className="mt-4 rounded-2xl border border-border bg-card md:bg-[url('/images/ui/booking_background.jpg')] md:dark:bg-[url('/images/ui/booking_background_dark.jpg')] bg-cover md:p-5 md:shadow-sm">
+        <div className="flex items-start gap-4 p-2 py-8 md:p-6">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
               Appointment ({appointment.id})
@@ -93,7 +92,9 @@ export function AppointmentDetails({ appointmentId }: AppointmentProps) {
             <p className="mt-2 text-sm text-muted">Duration: {appointment.duration}</p>
           </div>
         </div>
-        <EditBookingForm />
+        <div className="mx-auto w-full max-w-4xl md:px-4 py-8">
+          <EditBookingForm appointment={appointment} setAppointment={setAppointment} />
+        </div>
       </section>
     </div>
   );

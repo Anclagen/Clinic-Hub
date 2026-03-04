@@ -23,7 +23,6 @@ export type PatientAppointment = {
 };
 
 export type CreateAppointmentPayload = {
-  patientId: string | null;
   firstname: string;
   lastname: string;
   dateOfBirth: string;
@@ -32,6 +31,13 @@ export type CreateAppointmentPayload = {
   categoryId: number;
   durationMinutes: number;
   startAt: string;
+};
+
+export type UpdateAppointmentPayload = {
+  doctorId?: string;
+  categoryId?: number;
+  durationMinutes?: number;
+  startAt?: string;
 };
 
 export const AppointmentsService = {
@@ -71,8 +77,8 @@ export const AppointmentsService = {
       body: payload,
     }),
 
-  update: (id: string, payload: CreateAppointmentPayload) =>
-    api({
+  update: (id: string, payload: UpdateAppointmentPayload) =>
+    api<PatientAppointment>({
       method: "PUT",
       path: "/appointments/" + id,
       auth: true,

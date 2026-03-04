@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { AppointmentsService } from "@/api/services/appointmentsService";
 import { useState } from "react";
 import { Spinner } from "@/features/UI/Spinner";
+import { useRouter } from "next/navigation";
 
 const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "UTC";
 
@@ -20,6 +21,8 @@ export default function AppointmentCard({ appointment }: { appointment: PatientA
   const displayDate = format(zonedDate, "EEE, MMM d, yyyy, HH:mm");
   const isFuture = utcDate > new Date();
   const id = useAuthStore((s) => s.id);
+  const logout = useAuthStore((s) => s.logout);
+  const router = useRouter();
   const canEdit = isFuture && id !== null;
 
   const toggleCancellation = () => {
@@ -33,6 +36,11 @@ export default function AppointmentCard({ appointment }: { appointment: PatientA
       setAwaitingResponse(false);
       setIsDeleted(true);
     } catch (error) {
+      if (error?.status === 401) {
+        logout();
+        router.push("/auth/login?expired=true");
+        return;
+      }
       setAwaitingResponse(false);
       setError("An error occurred.");
     }
