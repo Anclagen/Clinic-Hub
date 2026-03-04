@@ -34,6 +34,15 @@ public class PatientProfileDTO
   public string? SocialSecurityNumber { get; set; }
 }
 
+public class CreatePatientAdminDto
+{
+  public string Firstname { get; set; } = default!;
+  public string Lastname { get; set; } = default!;
+  public string? Email { get; set; }
+  public DateOnly? DateOfBirth { get; set; }
+}
+
+
 public class UpdatePatientDto
 {
   public string? Firstname { get; set; }

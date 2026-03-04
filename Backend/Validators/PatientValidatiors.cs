@@ -1,4 +1,28 @@
 using FluentValidation;
+public class CreatePatientAdminValidator : AbstractValidator<CreatePatientAdminDto>
+{
+    public CreatePatientAdminValidator()
+    {
+        RuleFor(x => x.Firstname)
+          .NotEmpty()
+          .MaximumLength(100);
+
+        RuleFor(x => x.Lastname)
+          .NotEmpty()
+          .MaximumLength(100);
+
+        When(x => x.Email != null, () =>
+        {
+            RuleFor(x => x.Email!)
+          .EmailAddress()
+          .MaximumLength(255);
+        });
+
+        RuleFor(x => x.DateOfBirth)
+          .NotNull()
+          .WithMessage("Date of birth is required for registered patients.");
+    }
+}
 public class UpdatePatientValidator : AbstractValidator<UpdatePatientDto>
 {
     public UpdatePatientValidator()

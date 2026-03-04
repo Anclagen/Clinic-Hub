@@ -481,7 +481,7 @@ namespace Backend.Controllers
     /// <response code="400">Bad Request: Validation failed or modification attempted within the 24-hour lock period.</response>
     /// <response code="404">Not Found: Appointment ID is invalid or does not belong to the user.</response>
     /// <response code="409">Conflict: The selected doctor has a scheduling overlap.</response>
-    [HttpPut("{id}")]
+    [HttpPatch("{id}")]
     [Authorize]
     [ProducesResponseType(typeof(AppointmentResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]

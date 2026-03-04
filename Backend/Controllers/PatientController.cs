@@ -83,7 +83,7 @@ namespace Backend.Controllers
             Firstname = p.Firstname,
             Lastname = p.Lastname,
             Email = p.Email,
-            DateOfBirth = p.DateOfBirth!.Value
+            DateOfBirth = p.DateOfBirth.Value
           })
           .ToListAsync();
 
@@ -173,6 +173,74 @@ namespace Backend.Controllers
       }
 
       return Ok(patient);
+    }
+
+    /// <summary>
+    /// Creates a new patient profile (Admin Only).
+    /// </summary>
+    /// <remarks>
+    /// Creates a patient record without credentials. For self-service registration use /auth/register.
+    /// </remarks>
+    /// <response code="201">Created: Returns created patient details.</response>
+    /// <response code="400">Bad Request: Validation failed.</response>
+    /// <response code="401">Unauthorized: Missing/invalid JWT.</response>
+    /// <response code="403">Forbidden: Admin role required.</response>
+    /// <response code="409">Conflict: Email already in use.</response>
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(PatientDetailsDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreatePatient(
+      [FromBody] CreatePatientAdminDto dto,
+      [FromServices] IValidator<CreatePatientAdminDto> validator)
+    {
+      var validationResult = await validator.ValidateAsync(dto);
+      if (!validationResult.IsValid) return ValidationBadRequest(validationResult);
+
+      var firstname = dto.Firstname.Trim();
+      var lastname = dto.Lastname.Trim();
+
+      string? email = null;
+      if (!string.IsNullOrWhiteSpace(dto.Email))
+        email = dto.Email.Trim().ToLowerInvariant();
+
+      if (email != null)
+      {
+        var exists = await _dataContext.Patients
+          .AnyAsync(p => p.Email != null && p.Email.ToLower() == email);
+
+        if (exists)
+          return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Email already in use." });
+      }
+
+      var entity = new Patient
+      {
+        Id = Guid.NewGuid(),
+        Firstname = firstname,
+        Lastname = lastname,
+        Email = email,
+        DateOfBirth = dto.DateOfBirth,
+        IsGuest = true,
+        IsDeleted = false,
+      };
+
+      _dataContext.Patients.Add(entity);
+      await _dataContext.SaveChangesAsync();
+
+      var result = new PatientDetailsDto
+      {
+        Id = entity.Id,
+        Firstname = entity.Firstname,
+        Lastname = entity.Lastname,
+        Email = entity.Email,
+        DateOfBirth = entity.DateOfBirth.Value,
+        IsGuest = entity.IsGuest,
+      };
+
+      return CreatedAtAction(nameof(GetPatient), new { Id = entity.Id }, result);
     }
 
     /// <summary>

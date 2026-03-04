@@ -79,7 +79,7 @@ export const AppointmentsService = {
 
   update: (id: string, payload: UpdateAppointmentPayload) =>
     api<PatientAppointment>({
-      method: "PUT",
+      method: "PATCH",
       path: "/appointments/" + id,
       auth: true,
       body: payload,
