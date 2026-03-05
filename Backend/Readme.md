@@ -234,6 +234,14 @@ dotnet run
 | PATCH  | `/specialities/{id}` | Updates a speciality                               | Admin  |
 | DELETE | `/specialities/{id}` | Deletes a speciality                               | Admin  |
 
+| Method | Path           | Description                                                   | Access |
+| :----- | :------------- | :------------------------------------------------------------ | :----- |
+| GET    | `/admins`      | Retrieves a paged list of all administrative accounts         | Admin  |
+| GET    | `/admins/{id}` | Retrieves a specific admin profile by ID                      | Admin  |
+| POST   | `/admins`      | Registers a new administrative user with hashed credentials   | Admin  |
+| PATCH  | `/admins/{id}` | Partially updates admin info (Username, Email, or Password)   | Admin  |
+| DELETE | `/admins/{id}` | Deletes an admin; denied if deleting the last remaining admin | Admin  |
+
 **Full Documentation**: Available at `/doc` (Swagger) when running locally.
 
 ## PROJECT LOGIC & ARCHITECTURE
