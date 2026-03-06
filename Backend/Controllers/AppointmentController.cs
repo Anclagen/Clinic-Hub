@@ -571,6 +571,7 @@ namespace Backend.Controllers
             PatientId = a.PatientId,
             Firstname = a.Patient.Firstname,
             Lastname = a.Patient.Lastname,
+            DateOfBirth = a.Patient.DateOfBirth,
             CategoryId = a.CategoryId,
             CategoryName = a.Category.CategoryName,
             DoctorId = a.DoctorId,
