@@ -23,7 +23,7 @@ export default function Header() {
     () => [
       { href: "/", label: "Home" },
       { href: "/booking", label: "Booking" },
-      { href: "/doctors", label: "Doctors" },
+      { href: "/search", label: "Search Doctors" },
       { href: "/clinics", label: "Clinics" },
       { href: "/profile", label: "Profile", requiresAuth: true },
       { href: "/auth/login", label: "Login", hideWhenAuth: true, cta: "secondary" },
