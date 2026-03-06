@@ -139,7 +139,7 @@
   - [Tinybird Blog: Database Timestamps & Timezones](https://www.tinybird.co/blog/database-timestamps-timezones)
   - Gemini, ChatGTP were both helpful and a hindrance in implementing this correctly after the initial implementation had issues with timezone offsets and date mismatches between the frontend and backend.
 
-### Frontend
+### Frontend Implementation and UI:
 
 - Dealing with dates and timezones in JavaScript and React:
   - [date-fns Library](https://date-fns.org/)
@@ -149,6 +149,19 @@
 - [Heart rate animation](https://github.com/Hona-08/Heart-rate-monitor-Pure-CSS-Animation)
 - API handler for frontend
   - [Fetch Wrapper for Next.js: A Deep Dive into Best Practices](https://dev.to/dmitrevnik/fetch-wrapper-for-nextjs-a-deep-dive-into-best-practices-53dh)
+
+### Docs and general implementation:
+
+- [.NET 10 (ASP.NET Core)](https://learn.microsoft.com/en-us/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-10.0)
+- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/)
+- [Next.js 16](https://nextjs.org/blog/next-16)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Zustand](https://zustand-demo.pmnd.rs/)
+- [React Hook Form](https://react-hook-form.com/)
+- [Zod](https://zod.dev/)
+- [react-day-picker](https://react-day-picker.js.org/)
+- [date-fns](https://date-fns.org/)
+- [date-fns-tz](https://github.com/marnusw/date-fns-tz#readme)
 
 # Backend
 
