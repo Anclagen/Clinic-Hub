@@ -402,6 +402,21 @@ namespace Backend.Controllers
       if (overlaps)
         return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "This appointment coincides with another." });
 
+      if (resolvedPatient.Id != Guid.Empty)
+      {
+        var overlapsPatient = await _dataContext.Appointments.AnyAsync(a =>
+            a.PatientId == resolvedPatient.Id &&
+            dto.StartAt < a.StartAt.AddMinutes(a.DurationMinutes) &&
+            newEnd > a.StartAt);
+
+        if (overlapsPatient)
+          return Conflict(new ApiErrorDTO
+          {
+            StatusCode = 409,
+            Message = "You already have an appointment overlapping this time slot."
+          });
+      }
+
       // Transaction time!!!
       await using var tx = await _dataContext.Database.BeginTransactionAsync();
       try
@@ -527,9 +542,21 @@ namespace Backend.Controllers
                   a.DoctorId == appointment.DoctorId &&
                   appointment.StartAt < a.StartAt.AddMinutes(a.DurationMinutes) &&
                   newEnd > a.StartAt);
-
       if (overlaps)
         return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "The selected doctor is already booked for this time slot." });
+
+      var overlapsPatient = await _dataContext.Appointments.AnyAsync(a =>
+          a.Id != id &&
+          a.PatientId == appointment.PatientId &&
+          appointment.StartAt < a.StartAt.AddMinutes(a.DurationMinutes) &&
+          newEnd > a.StartAt);
+
+      if (overlapsPatient)
+        return Conflict(new ApiErrorDTO
+        {
+          StatusCode = 409,
+          Message = "You already have an appointment overlapping this time slot."
+        });
 
       await _dataContext.SaveChangesAsync();
 

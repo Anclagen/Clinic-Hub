@@ -248,12 +248,21 @@ dotnet run
 
 ### Data Privacy (PII)
 
-Based on course material defining non-sensitive PII as publicly available demographic information, guest users are permitted to store a limited subset of data (name, email, birthdate and gender). Sensitive PII and authentication credentials are strictly restricted to registered patients.
+- Guest users store a minimal subset of personal data required to create and manage an appointment. This includes Firstname, Lastname, Email, and DateOfBirth.
+- Sensitive identifiers (such as social security numbers, insurance identifiers, and authentication credentials) are restricted to registered patients only.
+- Email is required for guest bookings to allow appointment communication and to reduce duplicate or abusive bookings.
+
+In a production system, email verification could be used to confirm ownership before converting a guest patient into a registered account.
 
 ### Appointment Constraints
 
-Appointment durations are enforced by the backend based on the selected Category. This ensures that a "General Checkup" cannot be accidentally (or maliciously) booked for 5 hours, maintaining system integrity regardless of frontend behavior.
+The system enforces several constraints to ensure valid appointment scheduling:
+
+- Appointment booking times must be divided into 5-minute increments, eg. 8:00, 8:05, 8:10, etc. This is validated on the backend and rejected if not met.
+- The API allows for booking anytime, the frontend has environment variables to configure the visible booking hours and slot intervals. No requirement was given to enforce this, it was done purely for user experience frontend side, but the backend will accept any valid time as long as it meets the 5-minute increment rule.
+- Appointments cannot be booked in the past, and the API validates this to prevent scheduling errors.
+- Each appointment must be associated with a valid patient, doctor, category, and clinic, ensuring data integrity and proper scheduling. I didn't get clinic based on doctor as potentially a doctor could change clinics in the future. I only enforce based on the doctors current clinic at the time of booking, and allow for changing the clinic later if needed, but have enforced that a doctor have no future appointments when changing clinics to prevent scheduling conflicts.
 
 ### The "Date" Challenge
 
-Handling timezones across a MySQL database and a React frontend was a significant focus. All dates are synchronized using UTC to prevent scheduling offsets between the client and the server.
+Handling timezones across a MySQL database and a React frontend was a significant focus. All dates are synchronized using UTC to prevent scheduling offsets between the client and the server. After getting this correct I didn't attempt to enforce clinic opening hours server side as that could get messy with timezone conversions and the frontend already has configuration for this, so I left it as a user experience feature on the frontend to only show available slots within the configured hours, but the backend will accept any valid time as long as it meets the 5-minute increment rule and is not in the past.
