@@ -1,5 +1,5 @@
 export type ApiErrorPayload =
-  | { message?: string; errors?: Record<string, string[]>; statusCode?: number }
+  | { message?: string; errors?: Record<string, string>; statusCode?: number }
   | unknown;
 
 export class ApiError extends Error {

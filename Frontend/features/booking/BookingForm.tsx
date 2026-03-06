@@ -22,6 +22,7 @@ import { PatientAppointment } from "@/api/services/appointmentsService";
 import Link from "next/link";
 import { Button } from "../UI/Button";
 import { appointmentEnd, appointmentInterval, appointmentStart } from "./components/variables";
+import { bookingFormSchema } from "./components/bookingSchema";
 
 type ClinicOption = { id: number; clinicName: string };
 
@@ -229,6 +230,20 @@ export default function BookingPage() {
       setError("Fill in clinic, category, doctor, and appointment time.");
       return;
     }
+    const result = bookingFormSchema.safeParse(form);
+
+    if (!result.success) {
+      console.log(result.error.flatten().fieldErrors);
+      const fieldErrors = result.error.flatten().fieldErrors;
+
+      setErrors({
+        firstname: fieldErrors.firstname?.[0] ?? "",
+        lastname: fieldErrors.lastname?.[0] ?? "",
+        dateOfBirth: fieldErrors.dateOfBirth?.[0] ?? "",
+        email: fieldErrors.email?.[0] ?? "",
+      });
+      return;
+    }
 
     const payload = {
       patientId: id ? id : null,
@@ -248,6 +263,12 @@ export default function BookingPage() {
       setAppointment(response);
     } catch (err: unknown) {
       if (isApiError(err)) {
+        if (err.status === 400) {
+          const payload = err.payload as { errors?: Record<string, string> };
+          if (payload?.errors) {
+            setErrors(payload.errors);
+          }
+        }
         if (err.status === 401) {
           logout();
           router.push("/auth/login?expired=true");
@@ -303,20 +324,20 @@ export default function BookingPage() {
       <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handleSubmit} noValidate>
         <InputField
           label="First Name"
-          name="firstName"
+          name="firstname"
           value={form.firstname}
           onChange={(event) => setField("firstname", event.target.value)}
-          error={errors.firstName}
+          error={errors.firstname}
           placeholder="e.g. Jane"
           disabled={firstname ? true : false}
         />
 
         <InputField
           label="Last Name"
-          name="lastName"
+          name="lastname"
           value={form.lastname}
           onChange={(event) => setField("lastname", event.target.value)}
-          error={errors.lastName}
+          error={errors.lastname}
           placeholder="e.g. Doe"
           disabled={lastname ? true : false}
         />
@@ -444,7 +465,7 @@ export default function BookingPage() {
         <div className="md:col-span-2">
           <button
             type="submit"
-            className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+            className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
             disabled={!form.appointmentStartAt}
           >
             Confirm booking
