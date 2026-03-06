@@ -77,13 +77,15 @@ namespace Backend.Controllers
           .ThenBy(p => p.Id)
           .Skip((page - 1) * pageSize)
           .Take(pageSize)
+          .Where(p => !p.IsDeleted)
           .Select(p => new PatientDetailsDto
           {
             Id = p.Id,
             Firstname = p.Firstname,
             Lastname = p.Lastname,
             Email = p.Email,
-            DateOfBirth = p.DateOfBirth.Value
+            DateOfBirth = p.DateOfBirth,
+            IsGuest = p.IsGuest
           })
           .ToListAsync();
 
@@ -167,8 +169,8 @@ namespace Backend.Controllers
           Firstname = patient.Firstname,
           Lastname = patient.Lastname,
           Email = patient.Email,
-          DateOfBirth = patient.DateOfBirth.Value,
-          IsGuest = patient.IsGuest.Value,
+          DateOfBirth = patient.DateOfBirth,
+          IsGuest = patient.IsGuest,
         });
       }
 

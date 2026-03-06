@@ -74,7 +74,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter: Bearer {your JWT token}"
+        Description = "Enter: {your JWT token}"
     };
     options.AddSecurityDefinition("Bearer", bearerScheme);
     // Globally applies the bearer requirement and then the filter strips it from open endpoint because all the guide don't seem to work for .Net 10 with swagger as they want you to use other doc providers
