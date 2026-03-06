@@ -1,4 +1,8 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/15MjVqac)
+![](http://images.restapi.co.za/pvt/Noroff-64.png)
+
+# Noroff- Back-end Development Year 2
+
+# Exam Project 2
 
 ![](http://images.restapi.co.za/pvt/Noroff-64.png)
 
@@ -6,206 +10,392 @@
 
 # Back-end Development Year 2
 
-### Exam Project 2
+# Table of Contents
 
-This repository does not have any startup code. Use the 2 folders
+- [Endpoints](#endpoints)
+- [References](#references)
+- [Backend](#backend)
+  - [Technologies](#technologies)
+  - [Setup Instructions](#setup-instructions)
+  - [ERD](#erd)
+  - [PROJECT LOGIC & ARCHITECTURE](#project-logic--architecture)
+- [Frontend](#frontend)
+  - [Tech stack](#tech-stack)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Environment variables](#environment-variables)
 
-- Backend
-- Frontend
+## ENDPOINTS
 
-for your respective applications.
+### Auth
 
-Instruction for the course assignment is in the LMS (Moodle) system of Noroff.
-[https://lms.noroff.no](https://lms.noroff.no)
+| Method | Path                | Description                                                                       | Access |
+| :----- | :------------------ | :-------------------------------------------------------------------------------- | :----- |
+| POST   | `/auth/login`       | Authenticates a user and returns a JWT token                                      | Public |
+| POST   | `/auth/register`    | Registers a new patient account, or converts a guest profile to a patient account | Public |
+| POST   | `/auth/admin/login` | Authenticates administrative staff                                                | Public |
 
-![](http://images.restapi.co.za/pvt/ca_important.png)
+### Patients
 
-You will not be able to make any submissions after the course assignment deadline. Make sure to make all your commit **BEFORE** the deadline to this repository.
-
-![](http://images.restapi.co.za/pvt/help.png)
-
-If you need help with any instructions for the course assignment, contact your teacher on **Microsoft Teams**.
-
-**REMEMBER** Your Moodle LMS submission must have your repository link **AND** your Github username in the text file.
-Questions on brief:
-
-- registration enforce non-sensitive PII or password and dob minimum with option to add additional non-sensitive PII later?
-- guest user needs first name, last name, and dob to make an appointment, can I add email as required/optional to allow registration follow up to edit appointment?
-- You have email and email address in the brief for patient info I assume the second is a mistake and should be physical address?
-
-References
-
-- https://medium.com/@emreemenekse/a-comprehensive-guide-to-jwt-authentication-in-net-core-8e2d8859b1be
-
-// jwt claims sub changes to nameidentifier when using asp.net core identity, how to fix?
-
-- https://stackoverflow.com/questions/62475109/asp-net-core-jwt-authentication-changes-claims-sub
-- https://stackoverflow.com/questions/68252520/httpcontext-user-claims-doesnt-match-jwt-token-sub-changes-to-nameidentifie/68253821#68253821
-
-Seeders
-https://medium.com/@samsondavidoff/data-seeding-in-asp-net-core-the-right-way-4c7c1f4b1773
-
-Image error handling
-https://dev.to/eidellev/handling-broken-images-in-react-4oo2
-
-Heart rate animation
-https://github.com/Hona-08/Heart-rate-monitor-Pure-CSS-Animation
-
-swagger issues dotnet 10
-https://stackoverflow.com/questions/79834574/authentication-not-working-in-swagger-with-net-10
-https://github.com/dotnet/aspnetcore/issues/64524
-https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/master/docs/configure-and-customize-swaggergen.md#add-security-definitions-and-requirements-for-bearer-authentication
-Added a custom operation filter to add the Authorize header to the Swagger UI, and added the security definition for JWT Bearer authentication, between Claude, Gemini and ChatGPT, and some help from StackOverflow were able to get it working.
-
-validation the great rabbit hole
-https://www.milanjovanovic.tech/blog/functional-error-handling-in-dotnet-with-the-result-pattern
-https://andrewlock.net/handling-web-api-exceptions-with-problemdetails-middleware/
-https://docs.fluentvalidation.net/en/latest/aspnet.html
-
-dates the great clusterf\*\*k
-https://www.tinybird.co/blog/database-timestamps-timezones
-https://date-fns.org/
-https://github.com/marnusw/date-fns-tz#readme
-Gemini, ChatGTP were both helpful and a hindrance in getting these working.
-
-PII
-_Based on course material defining non-sensitive PII as publicly available demographic information (including gender and religion), guest users are permitted to store a limited subset of non-sensitive PII. For guest bookings, only first name, last name, email, and optionally birthdate, gender, and religion are stored. Sensitive PII such as government identifiers, tax numbers, insurance numbers, and authentication credentials are restricted to registered patients and never stored for guest users._
-
-Appointment Durations
-_Appointment durations are constrained by appointment category. Each category defines a default (or allowed set of) duration(s), preventing arbitrary booking lengths and simplifying scheduling validation. The backend enforces that appointment duration values match the selected category, ensuring data integrity regardless of client behaviour._
-
-Clinics
-_Clinic entities contain minimal identifying and display information (name, optional address, optional image) in line with the project scope, and just adding some quality of output to the frontend aesthetics._
-
-# Clinic Appointment Booking System
-
-Scenario
-A group of medical clinics has decided to offer patients an online Appointment Booking system. They have approached you to develop this system.
-It must take the form of a full-stack web application (Front-end, Back-end, Database) that allows patients to book a doctor's appointment without registering or logging in to the system.
-
-For this Exam Project, you are required to create the following:
-
-| Component           | Required technology                |
-| ------------------- | ---------------------------------- |
-| Database            | MySQL                              |
-| REST API back-end   | ASP.NET Core with Entity Framework |
-| Front-end interface | React                              |
-| API Documentation   | Swagger                            |
-
-Tip
-If your front-end and back-end are on different ports during development, you may encounter CORS errors.
-Learn how to configure your system accordingly: Microsoft ASP.NET Core Security
-
-## Instructions
-
-### Database
-
-- A MySQL Database must be created and used for this application. The database must be designed in the 3rd normal form.
-- A Code-First development approach should be used to create the database.
-- The tables must include relevant columns and data types.
-- All relevant relationships between tables must also be created.
-- The initial database creation, all database operations and queries must be performed using Entity Framework.
-
-#### DB Requirements
-
-- Each doctor has a Speciality (Some have the same Speciality).
-- A patient can have more than one appointment. For each appointment, there would be one category, and an appointment will be specific to one clinic.
-- A clinic can have more than one doctor, and each doctor has a specific speciality. Remember to account for many doctors having the same speciality.
-
-### Back-end
-
-- An ASP.NET Core REST API must be created as the back-end of this application.
-- Entity Framework must be used as the ORM.
-- REST API endpoints must be created to facilitate CRUD operations for all tables in the database.
-- All endpoints must return the correct results as JSON objects.
-- Validation must exist to prevent duplicate data records from being added to the database.
-- Validation must exist to check for existing dependencies before deletion of database records.
-
-If you require more endpoints in your back-end, they can be added to the project (Remember to specify these in your README file too).
-
-### Authentication
-
-- Authentication should be implemented in this project. User tokens should be stored upon successful login, and used for applicable endpoints.
-- Users can also use the system without authentication (i.e., no registration or login required), but functionality is limited (see below) and different user data is stored.
-
-### Patients and Users
-
-Users can choose to either register as a Patient, or to use the system without registering (i.e. as a Guest User) - design the database to accommodate this.
-When either type of user creates an appointment, some patient information must be stored in the database.
-Both registered Patient data and unregistered Guest User data must be stored in the same Database table (don't create separate tables for different types of users).
-The following are examples of some Patient data that is commonly captured by online booking systems:
-
-- First name;
-- Last name;
-- Email;
-- Social Security Number;
-- Birthdate;
-- Gender;
-- Tax Number;
-- Religion;
-- address;
-- Driver’s License Number;
-- Medical Insurance Member Number.
-
-**Remember**
-_For this Clinic Appointment Booking System, ensure that only the Non-Sensitive PII from this list is stored in the database for Guest Users, while all the mentioned data is stored for registered Patients._
+| Method | Path                        | Description                                        | Access        |
+| :----- | :-------------------------- | :------------------------------------------------- | :------------ |
+| GET    | `/patients`                 | Retrieves a paged list of active patients          | Admin         |
+| GET    | `/patients/{id}`            | Retrieves a specific patient profile by ID         | Admin / Owner |
+| POST   | `/patients`                 | Allow admin to create basic guest profiles         | Admin         |
+| POST   | `/patients/change-password` | Securely updates the authenticated user's password | Patient       |
+| PATCH  | `/patients/{id}`            | Partially updates a patient's profile              | Admin / Owner |
+| DELETE | `/patients/{id}`            | Permanently deletes a patient record               | Admin         |
+| DELETE | `/patients/anonymize/{id}`  | Anonymizes a patient's profile (soft delete)       | Admin         |
 
 ### Appointments
 
-When creating an Appointment, validation should be in place to prevent the creation of a conflicting appointment. For example, a patient at a clinic cannot book 2 appointments at the same time.
-Registered Patients can log in to:
+| Method | Path                         | Description                                                         | Access        |
+| :----- | :--------------------------- | :------------------------------------------------------------------ | :------------ |
+| GET    | `/appointments`              | Retrieves a paged and filtered list of all appointments             | Admin         |
+| GET    | `/appointments/me`           | Retrieves a paged list of the authenticated patient's appointments  | Patient       |
+| GET    | `/appointments/{id}`         | Retrieves details for a specific appointment                        | Admin / Owner |
+| GET    | `/appointments/booked-times` | Retrieves a doctor's booked time slots within a specific date range | Public        |
+| POST   | `/appointments`              | Books a new appointment                                             | Public        |
+| PATCH  | `/appointments/{id}`         | Updates an existing appointment's schedule or doctor                | Admin / Owner |
+| DELETE | `/appointments/{id}`         | Cancels and deletes a specific appointment                          | Admin / Owner |
 
-- Book appointments
-- View their existing appointments
-- Update/Cancel their existing appointments.
+### Doctors
 
-Guest Users should be able to book appointments, however they should not be able log in and maintain their appointments.
+| Method | Path              | Description                                                    | Access |
+| :----- | :---------------- | :------------------------------------------------------------- | :----- |
+| GET    | `/doctors`        | Retrieves a paged list of doctors for the public directory     | Public |
+| GET    | `/doctors/search` | Searches for doctors using name-based tokenization and filters | Public |
+| GET    | `/doctors/{id}`   | Retrieves detailed profile information for a doctor            | Public |
+| POST   | `/doctors`        | Registers a new doctor into the system                         | Admin  |
+| PATCH  | `/doctors/{id}`   | Updates an existing doctor's profile                           | Admin  |
+| DELETE | `/doctors/{id}`   | Removes a doctor from the directory                            | Admin  |
 
-###Search
-Create a single API endpoint allowing users to search for a doctor’s first name or last name. This search should return a JSON object as a result, containing:
+### Clinics
 
-- The doctor’s full name
-- The name of the clinic where the doctor is assigned
-- The name of the doctor’s speciality
+| Method | Path            | Description                          | Access |
+| :----- | :-------------- | :----------------------------------- | :----- |
+| GET    | `/clinics`      | Retrieves all clinics                | Public |
+| GET    | `/clinics/{id}` | Retrieves a clinic by ID             | Public |
+| POST   | `/clinics`      | Creates a new clinic into the system | Admin  |
+| PATCH  | `/clinics/{id}` | Partially updates a clinic profile   | Admin  |
+| DELETE | `/clinics/{id}` | Deletes a clinic                     | Admin  |
 
-LINQ or raw SQL can be used for the database query in this endpoint. Ensure that adequate validation has been implemented for this endpoint.
+### Categories
 
-## Front-end
+| Method | Path               | Description                                      | Access |
+| :----- | :----------------- | :----------------------------------------------- | :----- |
+| GET    | `/categories`      | Retrieves a paged list of appointment categories | Public |
+| GET    | `/categories/{id}` | Retrieves a specific appointment category        | Public |
+| POST   | `/categories`      | Creates a new appointment category               | Admin  |
+| PATCH  | `/categories/{id}` | Partially updates an appointment category        | Admin  |
+| DELETE | `/categories/{id}` | Deletes an appointment category                  | Admin  |
 
-Your Exam Project must include a separate Front-end Interface.
-The front-end system must only use API endpoints created in the back-end.
-The front-end should be implemented as follows:
+### Specialities
 
--The application should display a simple loading element to the user while it processes network requests to the server.
--The application should include a simple header with a navigation bar, as well as a footer displaying the current year on all pages.
--The application does require a registration and login screen for those users who wish to register.
--The appointment booking page should be the first page displayed at the root of the application (‘/’).
--UI component libraries can be optionally used to enhance the application’s look and feel.
--A patient (both registered patient and unregistered guest) should be able to book an appointment. Patient information, such as first and last name, and date of birth, should be supplied, as well as appointment details, such as the doctor chosen (from a dynamically loaded Select element with options from the database), appointment date, and appointment duration (in minutes). Appropriate error messages should be displayed to the user if the appointment form is invalid, including if the date and time chosen for the appointment are already booked by another patient (i.e., Validation).
--A search page where a doctor’s first or last name can be entered and a list of details, such as the full name, clinic name, and the doctor’s speciality, can be populated. If the doctor could not be found, an appropriate message should be displayed to the user.
--The application should have routes for the above functionality using a path of ‘/book’ and ‘/search’ respectively.
+| Method | Path                 | Description                                        | Access |
+| :----- | :------------------- | :------------------------------------------------- | :----- |
+| GET    | `/specialities`      | Retrieves a paged list of all medical specialities | Public |
+| GET    | `/specialities/{id}` | Retrieves a specific speciality by ID              | Public |
+| POST   | `/specialities`      | Creates a new medical speciality                   | Admin  |
+| PATCH  | `/specialities/{id}` | Updates a speciality                               | Admin  |
+| DELETE | `/specialities/{id}` | Deletes a speciality                               | Admin  |
 
-Attention should be given to user experience and functionality when designing the front-end.
+### Admins
 
-## Documentation
+| Method | Path           | Description                                                   | Access |
+| :----- | :------------- | :------------------------------------------------------------ | :----- |
+| GET    | `/admins`      | Retrieves a paged list of all administrative accounts         | Admin  |
+| GET    | `/admins/{id}` | Retrieves a specific admin profile by ID                      | Admin  |
+| POST   | `/admins`      | Registers a new administrative user with hashed credentials   | Admin  |
+| PATCH  | `/admins/{id}` | Partially updates admin info (Username, Email, or Password)   | Admin  |
+| DELETE | `/admins/{id}` | Deletes an admin; denied if deleting the last remaining admin | Admin  |
 
-### API Documentation
+**Full Documentation**: Available at `/doc` (Swagger) when running locally.
 
-The API documentation (Swagger) must include methods and JSON objects. It must be accessible from the endpoint /doc from the API URL.
+## REFERENCES
 
-`For example: http://localhost:3000/doc`
+### Identity & Security
 
-### README
+- JWT Architecture: [A Comprehensive Guide to JWT Authentication in .NET Core](https://medium.com/@emreemenekse/a-comprehensive-guide-to-jwt-authentication-in-net-core-8e2d8859b1be)
+- Claim Mapping Fixes: Addressed the issue where sub claims were automatically mapped to nameidentifier by Microsoft's middleware.
+  - [StackOverflow: JWT Auth changes claims sub](https://stackoverflow.com/questions/62475109/asp-net-core-jwt-authentication-changes-claims-sub)
+  - [StackOverflow: HttpContext User Claims mismatch](https://stackoverflow.com/questions/68252520/httpcontext-user-claims-doesnt-match-jwt-token-sub-changes-to-nameidentifie/68253821#68253821)
 
-A description of each endpoint must be specified in the README file.
-This must be indicated in the project’s README file under the heading "ENDPOINTS".
+### API Infrastructure (.NET 10)
 
-References
-Students must indicate where they have received help or used outside knowledge for their Exam Project. This must be indicated in the project’s README file under the heading "REFERENCES". This includes:
+- OpenAPI & Swagger Workarounds: Navigated the instability of .NET 10's native document generators by implementing a custom IOperationFilter and manual security definitions.
+  - [StackOverflow: Authentication not working in Swagger with .NET 10](https://stackoverflow.com/questions/79834574/authentication-not-working-in-swagger-with-net-10)
+  - [GitHub: ASP.NET Core Issues - SwaggerGen](https://github.com/dotnet/aspnetcore/issues/64524)
+  - [GitHub: Swashbuckle - Configure and Customize SwaggerGen](https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/master/docs/configure-and-customize-swaggergen.md#add-security-definitions-and-requirements-for-bearer-authentication)
+  - An unhealthy dose of watching AIs run around in circles trying to solve the problem, and then piecing together the correct solution from their various attempts and the linked resources.
+- Seeding Data in ASP.NET Core: Implemented a robust seeding mechanism to populate the database with test data for development and testing purposes.
+  - [Medium: Data Seeding in ASP.NET Core - The Right Way](https://medium.com/@samsondavidoff/data-seeding-in-asp-net-core-the-right-way-4c7c1f4b1773)
+- Error handling best practices and guides:
+  - [Functional Error Handling in .NET with the Result Pattern](https://www.milanjovanovic.tech/blog/functional-error-handling-in-dotnet-with-the-result-pattern)
+  - [Handling Web API Exceptions with ProblemDetails Middleware](https://andrewlock.net/handling-web-api-exceptions-with-problemdetails-middleware/)
+- Validation:
+  - [FluentValidation Integration with ASP.NET Core](https://docs.fluentvalidation.net/en/latest/aspnet.html)
+- Database Persistence: Strategies for UTC storage and timezone-aware retrieval.
+  - [Tinybird Blog: Database Timestamps & Timezones](https://www.tinybird.co/blog/database-timestamps-timezones)
+  - Gemini, ChatGTP were both helpful and a hindrance in implementing this correctly after the initial implementation had issues with timezone offsets and date mismatches between the frontend and backend.
 
-- Acknowledgements of any help received from other students (if the student is working in a mentor group).
-- Any code or knowledge that has been sourced from internet forums, textbooks, AI-generated code, etc.
+### Frontend
 
-### ENDPOINTS
+- Dealing with dates and timezones in JavaScript and React:
+  - [date-fns Library](https://date-fns.org/)
+  - [date-fns-tz GitHub](https://github.com/marnusw/date-fns-tz#readme)
+- Image error handling
+  - [Broken Images in React](https://dev.to/eidellev/handling-broken-images-in-react-4oo2)
+- [Heart rate animation](https://github.com/Hona-08/Heart-rate-monitor-Pure-CSS-Animation)
+- API handler for frontend
+  - [Fetch Wrapper for Next.js: A Deep Dive into Best Practices](https://dev.to/dmitrevnik/fetch-wrapper-for-nextjs-a-deep-dive-into-best-practices-53dh)
 
-### REFERENCES
+# Backend
+
+A .NET 10 Web API. This was built and run using version 10.0.100 of the .NET SDK.
+
+### Technologies
+
+- **Runtime**: .NET 10
+- **ORM**: Entity Framework Core with MySQL
+- **Validation**: FluentValidation
+- **Documentation**: Swagger/OpenAPI
+
+## Setup Instructions
+
+1. Clone the repository and navigate to the backend directory.
+
+2. Using the `appsettings.example.json` file as a template, create your own `appsettings.json` file in the root of the project and add your own values.
+
+```json
+{
+  "JwtSettings": {
+    "SecretKey": " MySecretKey",
+    "Issuer": "MyIssuer",
+    "Audience": "MyAudience",
+    "ExpiryMinutes": 600
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AdminSettings": {
+    "DefaultUsername": "admin",
+    "DefaultEmail": "admin@clinic.com",
+    "DefaultPassword": "ChangeMe123!"
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "server=localhost;database=exam_project_2;user=root;password=password123"
+  }
+}
+```
+
+4. Ensure you have a MySQL server running and details of your created database are correctly set in the `appsettings.json` file. This should match the ConnectionStrings:DefaultConnection value.
+
+```json
+"ConnectionStrings": {
+    "DefaultConnection": "server=localhost;database=dev_house;user=root;password=superSecurePassword"
+  }
+```
+
+5. Opening a terminal in the backend directory, install the required dependencies using the .NET CLI:
+
+```bash
+dotnet restore
+```
+
+6. Apply database migrations to set up the database schema:
+
+```bash
+dotnet ef database update
+```
+
+If you don't have the EF tools installed, you can do so with:
+
+```bash
+dotnet tool install --global dotnet-ef
+```
+
+If the migrations are not present, you can create them using:
+
+```bash
+dotnet ef migrations add Initial
+```
+
+Then run the update command again:
+
+```bash
+dotnet ef database update
+```
+
+7. The application includes a seeding mechanism to populate the database with test data for better frontend development and testing. You can run the seeding process with the following command:
+
+```bash
+dotnet run -- --seed
+```
+
+8. Finally, start the server with:
+
+```bash
+dotnet run
+```
+
+9.
+
+Run the following to seed the database with test data:
+dotnet run -- --seed
+
+Run the following to start the server:
+dotnet run
+
+5. Install the required dependencies using the .NET CLI
+
+```bash
+dotnet restore
+```
+
+6. Apply database migrations to set up the database schema
+
+```bash
+dotnet ef database update
+```
+
+If you don't have the EF tools installed, you can do so with:
+
+```bash
+dotnet tool install --global dotnet-ef
+```
+
+If the migrations are not present, you can create them using:
+
+```bash
+dotnet ef migrations add Initial
+```
+
+Then run the update command again:
+
+```bash
+dotnet ef database update
+```
+
+7. Run the application
+
+```bash
+dotnet run
+```
+
+8. The application includes a seeding mechanism to populate the database with test data for better frontend development and testing. You can run the seeding process with the following command:
+
+```bash
+dotnet run -- --seed
+```
+
+9. Finally, start the server with:
+
+```bash
+dotnet run
+```
+
+10. The API is currently configured to run on `https://localhost:7071` and the Swagger documentation is available at `https://localhost:7071/doc` when running locally.
+
+## ERD
+
+![ERD](ERD.jpg)
+
+## Project Logic & Architecture
+
+### Data Privacy (PII)
+
+- Guest users store a minimal subset of personal data required to create and manage an appointment. This includes Firstname, Lastname, Email, and DateOfBirth.
+- Sensitive identifiers (such as social security numbers, insurance identifiers, and authentication credentials) are restricted to registered patients only.
+- Email is required for guest bookings to allow appointment communication and to reduce duplicate or abusive bookings.
+
+In a production system, email verification could be used to confirm ownership before converting a guest patient into a registered account.
+
+### Appointment Constraints
+
+The system enforces several constraints to ensure valid appointment scheduling:
+
+- Appointment booking times must be divided into 5-minute increments, eg. 8:00, 8:05, 8:10, etc. This is validated on the backend and rejected if not met.
+- The API allows for booking anytime, the frontend has environment variables to configure the visible booking hours and slot intervals. No requirement was given to enforce this, it was done purely for user experience frontend side, but the backend will accept any valid time as long as it meets the 5-minute increment rule.
+- Appointments cannot be booked in the past, and the API validates this to prevent scheduling errors.
+- Each appointment must be associated with a valid patient, doctor, category, and clinic, ensuring data integrity and proper scheduling. I didn't get clinic based on doctor, as potentially a doctor could change clinics in the future. I only enforce based on the doctors current clinic at the time of booking, and allow for changing the clinic later if needed, but have enforced that a doctor have no future appointments when changing clinics to prevent scheduling conflicts.
+
+### The "Date" Challenge
+
+Handling timezones across a MySQL database and a React frontend was a significant focus. All dates are synchronized using UTC to prevent scheduling offsets between the client and the server. After getting this correct I didn't attempt to enforce clinic opening hours server side as that could get messy with timezone conversions and the frontend already has configuration for this, so I left it as a user experience feature on the frontend to only show available slots within the configured hours, but the backend will accept any valid time as long as it meets the 5-minute increment rule and is not in the past.
+
+# Frontend
+
+Next.js frontend for the Clinic Hub booking system.  
+Consumes the REST API and provides public booking, patient login, and basic directory/lookup UI.
+
+### Tech stack
+
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS
+- Zustand (auth/session state)
+- React Hook Form + Zod (form handling + validation)
+- date-fns + date-fns-tz (date/time handling)
+- react-day-picker (calendar UI)
+
+### Features
+
+The frontend provides the following functionality:
+
+- Public appointment booking
+- Guest patient booking flow
+- Calendar-based slot selection, with dynamic generation based on backend availability and configured booking hours
+- Patient login and registration
+- Patient appointment overview, cancellation, and rescheduling
+- Doctor directory, filters by specialty/clinic, and search by doctor name
+- Clinic lookup, with details page showing associated doctors at location
+
+Authentication state is managed using Zustand and persisted locally to maintain session state between refreshes.
+
+An admin dashboard is also included, but not linked in the UI, as it was not a requirement. It can be accessed at `/admin` and provides basic CRUD interfaces for managing doctors, clinics, categories, and appointments.
+
+### Requirements
+
+- Node.js (LTS recommended)
+- Running backend API (ASP.NET Core) on HTTPS
+
+### Environment variables
+
+Create a `.env` file in the frontend root:
+
+```bash
+# API url
+NEXT_PUBLIC_API_BASE_URL=https://localhost:7071
+NEXT_PUBLIC_TIMEZONE=Europe/Oslo
+
+# Booking slot configuration
+#(minutes, increments of 5 recommended, API rejects based on %5 validation )
+NEXT_PUBLIC_APPOINTMENT_INTERVAL=15
+#(hours, whole numbers, 24h format, haven't supported decimal hours yet)
+NEXT_PUBLIC_APPOINTMENT_START=8
+NEXT_PUBLIC_APPOINTMENT_END=16
+```
+
+### Notes
+
+- `NEXT_PUBLIC_API_BASE_URL` must match the backend HTTPS URL.
+- Time values are used for booking slot generation on the client.
+- If you change backend ports, update the env value accordingly.
+- Timezone handling: Frontend uses `NEXT_PUBLIC_TIMEZONE=Europe/Oslo` together with date-fns-tz to present times consistently to Norwegian users while sending appointment timestamps to the API in ISO format (UTC).
+
+### Install & Run
+
+```bash
+# Install dependencies
+npm install
+# Run development server
+npm run dev
+```
+
+Open `http://localhost:3000` in your browser to access the frontend.
