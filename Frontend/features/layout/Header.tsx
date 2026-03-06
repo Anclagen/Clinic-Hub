@@ -22,7 +22,7 @@ export default function Header() {
   const navItems: NavItem[] = useMemo(
     () => [
       { href: "/", label: "Home" },
-      { href: "/booking", label: "Booking" },
+      { href: "/book", label: "Booking" },
       { href: "/search", label: "Search Doctors" },
       { href: "/clinics", label: "Clinics" },
       { href: "/profile", label: "Profile", requiresAuth: true },

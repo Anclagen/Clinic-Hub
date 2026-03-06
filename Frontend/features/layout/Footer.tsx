@@ -22,7 +22,7 @@ export default function Footer() {
               Home
             </Link>
             <Link
-              href="/booking"
+              href="/book"
               className="rounded-full px-3 py-1.5 text-foreground/80 transition hover:bg-primary-soft hover:text-primary"
             >
               Booking
