@@ -23,8 +23,6 @@ namespace Backend.Controllers
       _authService = authService;
     }
 
-
-
     /// <summary>
     /// Retrieves a paged list of active patients (Admin Only).
     /// </summary>
@@ -417,6 +415,17 @@ namespace Backend.Controllers
         });
       }
       if (entity.IsDeleted) return NoContent();
+
+      var hasUpcomingAppointments = await _dataContext.Appointments.AnyAsync(a => a.PatientId == id && a.StartAt > DateTime.UtcNow);
+
+      if (hasUpcomingAppointments)
+      {
+        return Conflict(new ApiErrorDTO
+        {
+          StatusCode = 409,
+          Message = "Patient has upcoming appointments. Cancel them before anonymizing the profile."
+        });
+      }
 
       entity.Firstname = "[deleted]";
       entity.Lastname = "[deleted]";
