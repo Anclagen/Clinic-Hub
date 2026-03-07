@@ -54,8 +54,6 @@ export function AppointmentDetails({ appointmentId }: AppointmentProps) {
     return <AppointmentDetailsSkeleton />;
   }
 
-  const start = new Date(appointment.startAt);
-
   if (error || !appointment) {
     return (
       <div className="mx-auto w-full max-w-6xl md:px-4 py-8">
@@ -63,11 +61,13 @@ export function AppointmentDetails({ appointmentId }: AppointmentProps) {
           Back to profile
         </Link>
         <div className="mt-4 rounded-xl border border-error bg-error-soft px-4 py-3 text-sm text-error">
-          {error?.message ?? "Appointment not found."}
+          {error ?? "Appointment not found."}
         </div>
       </div>
     );
   }
+
+  const start = new Date(appointment.startAt);
 
   return (
     <div className="mx-auto w-full max-w-6xl md:px-4 py-8 ">

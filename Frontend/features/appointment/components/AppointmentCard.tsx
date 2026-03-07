@@ -8,10 +8,17 @@ import { AppointmentsService } from "@/api/services/appointmentsService";
 import { useState } from "react";
 import { Spinner } from "@/features/UI/Spinner";
 import { useRouter } from "next/navigation";
+import { isApiError } from "@/api/errors";
 
 const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "UTC";
 
-export default function AppointmentCard({ appointment }: { appointment: PatientAppointment }) {
+export default function AppointmentCard({
+  appointment,
+  onCancelled,
+}: {
+  appointment: PatientAppointment;
+  onCancelled?: (appointmentId: string) => void;
+}) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [awaitingResponse, setAwaitingResponse] = useState(false);
   const [error, setError] = useState<null | string>(null);
@@ -35,8 +42,9 @@ export default function AppointmentCard({ appointment }: { appointment: PatientA
       await AppointmentsService.cancel(appointment.id);
       setAwaitingResponse(false);
       setIsDeleted(true);
+      onCancelled?.(appointment.id);
     } catch (error) {
-      if (error?.status === 401) {
+      if (isApiError(error) && error.status === 401) {
         logout();
         router.push("/auth/login?expired=true");
         return;

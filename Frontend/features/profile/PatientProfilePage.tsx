@@ -30,16 +30,23 @@ export default function PatientProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [accountActionLoading, setAccountActionLoading] = useState<null | "delete" | "anonymize">(
+    null,
+  );
+  const [pendingAccountAction, setPendingAccountAction] = useState<null | "delete" | "anonymize">(
+    null,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [accountActionError, setAccountActionError] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileFormState>(defaultForm);
+  const [patientProfile, setPatientProfile] = useState<ProfileFormState>(defaultForm);
   const [fieldErrors, setFieldErrors] = useState<ProfileFormErrors>({});
   const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
 
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    console.log(hasHydrated);
     if (!hasHydrated) return;
     if (!token) {
       router.replace("/auth/login");
@@ -65,16 +72,20 @@ export default function PatientProfilePage() {
         ]);
 
         if (!active) return;
-        console.log(profileResponse, appointmentResponse);
 
-        setForm(toFormState(profileResponse));
+        const profileForm = toFormState(profileResponse);
+        setForm(profileForm);
+        setPatientProfile(profileForm);
+
         setAppointments(appointmentResponse.data ?? []);
       } catch (err: unknown) {
         if (!active) return;
-        if (isApiError(err) && err.status === 401) {
-          logout();
-          router.replace("/auth/login");
-          return;
+        if (isApiError(err)) {
+          if (err.status === 401 || err.status === 404) {
+            logout();
+            router.replace("/auth/login");
+            return;
+          }
         }
         setLoadError(toErrorMessage(err, "Failed to load profile."));
       } finally {
@@ -99,6 +110,83 @@ export default function PatientProfilePage() {
     });
   };
 
+  const handleCancelEdit = () => {
+    setForm(patientProfile);
+    setFieldErrors({});
+    setSaveMessage(null);
+    setLoadError(null);
+    setEditing(false);
+  };
+
+  const now = Date.now();
+  const upcomingAppointments = appointments.filter(
+    (appointment) => new Date(appointment.startAt).getTime() >= now,
+  );
+  const hasUpcomingAppointments = upcomingAppointments.length > 0;
+  const hasAnyAppointments = appointments.length > 0;
+  const canDeleteAccount = !hasAnyAppointments;
+  const canAnonymizeAccount = !hasUpcomingAppointments;
+  const deleteAccountMessage = canDeleteAccount
+    ? "Available because this account has no appointments."
+    : "Disabled because accounts with any appointment history cannot be deleted.";
+  const anonymizeAccountMessage = canAnonymizeAccount
+    ? "Available because this account has no upcoming appointments."
+    : "Disabled until all upcoming appointments are cancelled.";
+
+  const handleAppointmentCancelled = (appointmentId: string) => {
+    setAppointments((current) => current.filter((appointment) => appointment.id !== appointmentId));
+  };
+
+  const handleAccountAction = async (action: "delete" | "anonymize") => {
+    const patientId = resolveCurrentPatientId();
+    if (!patientId) {
+      logout();
+      router.replace("/auth/login");
+      return;
+    }
+
+    setAccountActionLoading(action);
+    setAccountActionError(null);
+    setPendingAccountAction(null);
+
+    try {
+      if (action === "delete") {
+        await PatientsService.remove(patientId);
+      } else {
+        await PatientsService.anonymize(patientId);
+      }
+
+      logout();
+      router.replace("/");
+    } catch (err: unknown) {
+      if (isApiError(err)) {
+        if (err.status === 401 || err.status === 404) {
+          logout();
+          router.replace("/auth/login");
+          return;
+        }
+      }
+
+      setAccountActionError(
+        toErrorMessage(
+          err,
+          action === "delete" ? "Failed to delete account." : "Failed to anonymize account.",
+        ),
+      );
+    } finally {
+      setAccountActionLoading(null);
+    }
+  };
+
+  const startAccountAction = (action: "delete" | "anonymize") => {
+    setAccountActionError(null);
+    setPendingAccountAction(action);
+  };
+
+  const cancelPendingAccountAction = () => {
+    setPendingAccountAction(null);
+  };
+
   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -115,6 +203,20 @@ export default function PatientProfilePage() {
     setFieldErrors({});
 
     try {
+      const updatedProfile: ProfileFormState = {
+        firstname: form.firstname.trim(),
+        lastname: form.lastname.trim(),
+        email: form.email.trim(),
+        dateOfBirth: form.dateOfBirth || "",
+        gender: form.gender.trim(),
+        address: form.address.trim(),
+        religion: form.religion.trim(),
+        driverLicenseNumber: form.driverLicenseNumber.trim(),
+        medicalInsuranceMemberNumber: form.medicalInsuranceMemberNumber.trim(),
+        taxNumber: form.taxNumber.trim(),
+        socialSecurityNumber: form.socialSecurityNumber.trim(),
+      };
+
       await PatientsService.update(patientId, {
         firstname: form.firstname.trim(),
         lastname: form.lastname.trim(),
@@ -128,6 +230,9 @@ export default function PatientProfilePage() {
         taxNumber: form.taxNumber.trim(),
         socialSecurityNumber: form.socialSecurityNumber.trim(),
       });
+
+      setForm(updatedProfile);
+      setPatientProfile(updatedProfile);
 
       setProfile({
         id: patientId,
@@ -327,7 +432,7 @@ export default function PatientProfilePage() {
                   type="button"
                   disabled={saving}
                   className="inline-flex rounded-xl bg-secondary px-5 py-2.5 ms-5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary-hover disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={() => setEditing(false)}
+                  onClick={handleCancelEdit}
                 >
                   Cancel
                 </button>
@@ -348,7 +453,82 @@ export default function PatientProfilePage() {
         </section>
       </form>
 
-      <ProfileAppointments appointments={appointments} now={Date.now()} />
+      <section className="mt-6 rounded-2xl border border-error/30 bg-card p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-foreground">Account Options</h2>
+        <p className="mt-2 text-sm text-muted">
+          Deletion requires no appointments at all. Anonymisation is allowed when there are no
+          upcoming appointments, including when only historical appointments remain.
+        </p>
+        {accountActionError ? (
+          <div className="mt-4 rounded-xl border border-error bg-error-soft px-4 py-3 text-sm text-error">
+            {accountActionError}
+          </div>
+        ) : null}
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-border bg-background/70 p-4">
+            <h3 className="text-sm font-semibold text-foreground">Delete Account</h3>
+            <p className="mt-2 text-sm text-muted">{deleteAccountMessage}</p>
+            <button
+              type="button"
+              disabled={!canDeleteAccount || accountActionLoading !== null}
+              onClick={() => startAccountAction("delete")}
+              className="mt-4 inline-flex w-full justify-center rounded-xl border border-error px-5 py-2.5 text-sm font-semibold text-error transition hover:bg-error-soft disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {accountActionLoading === "delete" ? "Deleting..." : "Delete Account"}
+            </button>
+          </div>
+          <div className="rounded-xl border border-border bg-background/70 p-4">
+            <h3 className="text-sm font-semibold text-foreground">Anonymize Account</h3>
+            <p className="mt-2 text-sm text-muted">{anonymizeAccountMessage}</p>
+            <button
+              type="button"
+              disabled={!canAnonymizeAccount || accountActionLoading !== null}
+              onClick={() => startAccountAction("anonymize")}
+              className="mt-4 inline-flex w-full justify-center rounded-xl bg-error px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-error/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {accountActionLoading === "anonymize" ? "Anonymizing..." : "Anonymize Account"}
+            </button>
+          </div>
+        </div>
+        {pendingAccountAction ? (
+          <div className="mt-5 rounded-xl border border-error bg-error-soft/60 p-4">
+            <h3 className="text-sm font-semibold text-error">
+              {pendingAccountAction === "delete"
+                ? "Confirm permanent deletion"
+                : "Confirm anonymisation"}
+            </h3>
+            <p className="mt-2 text-sm text-foreground">
+              {pendingAccountAction === "delete"
+                ? "This permanently removes the account and cannot be undone."
+                : "This removes personal details from the account and cannot be undone."}
+            </p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                disabled={accountActionLoading !== null}
+                onClick={() => void handleAccountAction(pendingAccountAction)}
+                className="inline-flex justify-center rounded-xl bg-error px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-error/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pendingAccountAction === "delete" ? "Confirm Delete" : "Confirm Anonymize"}
+              </button>
+              <button
+                type="button"
+                disabled={accountActionLoading !== null}
+                onClick={cancelPendingAccountAction}
+                className="inline-flex justify-center rounded-xl border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-background disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <ProfileAppointments
+        appointments={appointments}
+        now={now}
+        onCancelled={handleAppointmentCancelled}
+      />
     </div>
   );
 }

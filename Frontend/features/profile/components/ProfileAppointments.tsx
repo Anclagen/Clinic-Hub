@@ -6,9 +6,11 @@ import AppointmentCard from "../../appointment/components/AppointmentCard";
 export function ProfileAppointments({
   appointments,
   now,
+  onCancelled,
 }: {
   appointments: PatientAppointment[];
   now: number;
+  onCancelled?: (appointmentId: string) => void;
 }) {
   const [showOlderAppointments, setShowOlderAppointments] = useState(false);
 
@@ -36,7 +38,11 @@ export function ProfileAppointments({
           </div>
         ) : (
           upcomingAppointments.map((appointment) => (
-            <AppointmentCard key={appointment.id} appointment={appointment} />
+            <AppointmentCard
+              key={appointment.id}
+              appointment={appointment}
+              onCancelled={onCancelled}
+            />
           ))
         )}
       </div>
@@ -60,7 +66,11 @@ export function ProfileAppointments({
           </h3>
           <div className="mt-3 space-y-3">
             {pastAppointments.map((appointment) => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
+              <AppointmentCard
+                key={appointment.id}
+                appointment={appointment}
+                onCancelled={onCancelled}
+              />
             ))}
           </div>
         </div>

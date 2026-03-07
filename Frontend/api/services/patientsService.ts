@@ -67,4 +67,18 @@ export const PatientsService = {
       auth: true,
       body: payload,
     }),
+
+  anonymize: (id: string) =>
+    api<void>({
+      method: "DELETE",
+      path: `/patients/anonymize/${id}`,
+      auth: true,
+    }),
+
+  remove: (id: string) =>
+    api<void>({
+      method: "DELETE",
+      path: `/patients/${id}`,
+      auth: true,
+    }),
 };
