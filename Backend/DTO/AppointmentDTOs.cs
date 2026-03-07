@@ -68,8 +68,6 @@ public sealed class AppointmentQueryDTO
   /// <summary>Exclusive end date (UTC)</summary>
   public DateTime? To { get; init; }
 
-  public string? Status { get; init; }
-
   public int Page { get; init; } = 1;
   public int PageSize { get; init; } = 20;
 
