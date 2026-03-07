@@ -26,6 +26,10 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentDTO
             .MustAsync(async (id, ct) => await db.Clinics.AnyAsync(c => c.Id == id, ct))
             .WithMessage(x => $"Clinic with id {x.ClinicId} was not found.");
 
+        RuleFor(x => x.DoctorId)
+            .MustAsync(async (dto, doctorId, ct) => await db.Doctors.AnyAsync(d => d.Id == doctorId && d.ClinicId == dto.ClinicId, ct))
+            .WithMessage("Doctor does not belong to the selected clinic.");
+
         RuleFor(x => x.CategoryId)
             .GreaterThan(0)
             .MustAsync(async (id, ct) => await db.Categories.AnyAsync(c => c.Id == id, ct))
