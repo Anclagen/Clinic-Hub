@@ -114,17 +114,17 @@ namespace Backend.Controllers
     /// <response code="401">Unauthorized: Valid JWT is required.</response>
     /// <response code="403">Forbidden: You cannot access profiles other than your own.</response>
     /// <response code="404">Not Found: Patient ID does not exist.</response>
-    [HttpGet("{Id}")]
+    [HttpGet("{id}")]
     [Authorize]
     [ProducesResponseType(typeof(PatientProfileDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PatientProfileDTO>> GetPatient(Guid Id)
+    public async Task<ActionResult<PatientProfileDTO>> GetPatient(Guid id)
     {
       var sub = User.FindFirst("sub")?.Value;
       var isAdmin = User.IsInRole("Admin");
-      if (!isAdmin && Id.ToString() != sub)
+      if (!isAdmin && id.ToString() != sub)
       {
         return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorDTO
         {
@@ -134,7 +134,7 @@ namespace Backend.Controllers
       }
 
       var patient = await _dataContext.Patients
-          .Where(p => p.Id == Id)
+          .Where(p => p.Id == id)
           .Select(p => new PatientProfileDTO
           {
             Id = p.Id,
@@ -157,7 +157,7 @@ namespace Backend.Controllers
         return NotFound(new ApiErrorDTO
         {
           StatusCode = 404,
-          Message = $"Patient with id {Id} was not found."
+          Message = $"Patient with id {id} was not found."
         });
       }
 
@@ -257,7 +257,7 @@ namespace Backend.Controllers
     /// <response code="401">Unauthorized: Valid JWT is required.</response>
     /// <response code="403">Forbidden: Attempted to update another user's profile.</response>
     /// <response code="409">Conflict: Email is already in use by another account.</response>
-    [HttpPatch("{Id}")]
+    [HttpPatch("{id}")]
     [Authorize]
     [ProducesResponseType(typeof(PatientProfileDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiBadRequestErrorDTO), StatusCodes.Status400BadRequest)]
@@ -265,14 +265,14 @@ namespace Backend.Controllers
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdatePatient(
-    Guid Id,
+    Guid id,
     [FromBody] UpdatePatientDto dto,
     [FromServices] IValidator<UpdatePatientDto> validator)
     {
       var isAdmin = User.IsInRole("Admin");
       var sub = User.FindFirst("sub")?.Value;
 
-      if (!isAdmin && Id.ToString() != sub)
+      if (!isAdmin && id.ToString() != sub)
       {
         return StatusCode(403, new ApiErrorDTO { StatusCode = 403, Message = "You can only update your own profile." });
       }
@@ -280,7 +280,7 @@ namespace Backend.Controllers
       var validationResult = await validator.ValidateAsync(dto);
       if (!validationResult.IsValid) return ValidationBadRequest(validationResult);
 
-      var entity = await _dataContext.Patients.FindAsync(Id);
+      var entity = await _dataContext.Patients.FindAsync(id);
       if (entity == null || entity.IsDeleted)
         return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Patient not found." });
 
@@ -292,7 +292,7 @@ namespace Backend.Controllers
         var newEmail = dto.Email.Trim().ToLowerInvariant();
         if (newEmail != entity.Email.ToLowerInvariant())
         {
-          var exists = await _dataContext.Patients.AnyAsync(p => p.Email.ToLower() == newEmail && p.Id != Id);
+          var exists = await _dataContext.Patients.AnyAsync(p => p.Email.ToLower() == newEmail && p.Id != id);
           if (exists) return Conflict(new ApiErrorDTO { Message = "Email already in use." });
           entity.Email = newEmail;
         }
@@ -391,23 +391,23 @@ namespace Backend.Controllers
     /// <response code="204">Success: Record anonymized.</response>
     /// <response code="403">Forbidden: You cannot anonymize other users.</response>
     /// <response code="404">Not Found: Patient ID invalid.</response>
-    [HttpDelete("anonymize/{Id}")]
+    [HttpDelete("anonymize/{id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AnonymizePatient(Guid Id)
+    public async Task<IActionResult> AnonymizePatient(Guid id)
     {
       var isAdmin = User.IsInRole("Admin");
       var sub = User.FindFirst("sub")?.Value;
 
-      if (!isAdmin && Id.ToString() != sub)
+      if (!isAdmin && id.ToString() != sub)
       {
         return StatusCode(403, new ApiErrorDTO { Message = "You are not authorized to anonymize this profile." });
       }
 
-      var entity = await _dataContext.Patients.FindAsync(Id);
+      var entity = await _dataContext.Patients.FindAsync(id);
       if (entity == null)
       {
         return NotFound(new ApiErrorDTO
@@ -449,27 +449,27 @@ namespace Backend.Controllers
     /// <response code="401">Unauthorized: Valid JWT required.</response>
     /// <response code="403">Forbidden: Insufficient permissions.</response>
     /// <response code="409">Conflict: Patient has existing appointments and cannot be removed.</response>
-    [HttpDelete("{Id}")]
+    [HttpDelete("{id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> DeletePatient(Guid Id)
+    public async Task<IActionResult> DeletePatient(Guid id)
     {
       var isAdmin = User.IsInRole("Admin");
       var sub = User.FindFirst("sub")?.Value;
 
-      if (!isAdmin && Id.ToString() != sub)
+      if (!isAdmin && id.ToString() != sub)
       {
         return StatusCode(403, new ApiErrorDTO { Message = "You are not authorized to delete this profile." });
       }
 
-      var patient = await _dataContext.Patients.FindAsync(Id);
+      var patient = await _dataContext.Patients.FindAsync(id);
       if (patient == null) return NotFound();
 
-      var hasAppointments = await _dataContext.Appointments.AnyAsync(a => a.PatientId == Id);
+      var hasAppointments = await _dataContext.Appointments.AnyAsync(a => a.PatientId == id);
       if (hasAppointments)
       {
         return Conflict(new ApiErrorDTO

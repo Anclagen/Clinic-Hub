@@ -596,25 +596,25 @@ namespace Backend.Controllers
     /// 2. Appointments cannot be deleted if they are in the past.
     /// 3. Appointments cannot be deleted within 24 hours of the start time (Cancellation Lock).
     /// </remarks>
-    /// <param name="Id">The unique GUID of the appointment.</param>
+    /// <param name="id">The unique GUID of the appointment.</param>
     /// <response code="204">Appointment successfully deleted.</response>
     /// <response code="401">Unauthorized: Token is missing or invalid.</response>
     /// <response code="404">Not Found: Appointment doesn't exist or doesn't belong to the user.</response>
     /// <response code="409">Conflict: Too late to cancel or database constraint violation.</response>
-    [HttpDelete("{Id}")]
+    [HttpDelete("{id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDTO), 401)]
     [ProducesResponseType(typeof(ApiErrorDTO), 404)]
     [ProducesResponseType(typeof(ApiErrorDTO), 409)]
-    public async Task<IActionResult> DeleteAppointment(Guid Id)
+    public async Task<IActionResult> DeleteAppointment(Guid id)
     {
       var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
       if (!Guid.TryParse(sub, out var patientId))
         return Unauthorized();
 
       var appointment = await _dataContext.Appointments
-        .FirstOrDefaultAsync(a => a.Id == Id && a.PatientId == patientId);
+        .FirstOrDefaultAsync(a => a.Id == id && a.PatientId == patientId);
 
       if (appointment is null)
         return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Appointment was not found." });

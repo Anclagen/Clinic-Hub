@@ -148,16 +148,16 @@ namespace Backend.Controllers
     /// <summary>
     /// Retrieves detailed profile information for a specific doctor.
     /// </summary>
-    /// <param name="Id">The unique GUID of the doctor.</param>
+    /// <param name="id">The unique GUID of the doctor.</param>
     /// <response code="200">Returns the doctor's profile and associated clinic/speciality details.</response>
     /// <response code="404">Not Found: The specified doctor ID does not exist.</response>
-    [HttpGet("{Id}")]
+    [HttpGet("{id}")]
     [ProducesResponseType(typeof(DoctorResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<DoctorResponseDTO>> GetDoctor(Guid Id)
+    public async Task<ActionResult<DoctorResponseDTO>> GetDoctor(Guid id)
     {
       var doctor = await MapDoctorToResponse(_dataContext.Doctors.AsNoTracking())
-          .FirstOrDefaultAsync(d => d.Id == Id);
+          .FirstOrDefaultAsync(d => d.Id == id);
 
       if (doctor is null)
       {
@@ -229,21 +229,21 @@ namespace Backend.Controllers
     /// <response code="200">Success: Returns the full updated doctor profile.</response>
     /// <response code="400">Bad Request: Validation failed.</response>
     /// <response code="404">Not Found: Doctor ID does not exist.</response>
-    [HttpPatch("{Id}")]
+    [HttpPatch("{id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(DoctorResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateDoctor(
-        Guid Id,
+        Guid id,
         [FromBody] UpdateDoctorDTO dto,
         [FromServices] IValidator<UpdateDoctorDTO> validator)
     {
       var validationResult = await validator.ValidateAsync(dto);
       if (!validationResult.IsValid) return ValidationBadRequest(validationResult);
 
-      var entity = await _dataContext.Doctors.FindAsync(Id);
+      var entity = await _dataContext.Doctors.FindAsync(id);
       if (entity == null)
       {
         return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Doctor not found." });
@@ -253,7 +253,7 @@ namespace Backend.Controllers
       {
         // Check for future appointments at the OLD clinic
         var hasFutureAppointments = await _dataContext.Appointments
-            .AnyAsync(a => a.DoctorId == Id &&
+            .AnyAsync(a => a.DoctorId == id &&
                            a.ClinicId == entity.ClinicId &&
                            a.StartAt > DateTime.UtcNow);
         if (hasFutureAppointments)
@@ -299,24 +299,24 @@ namespace Backend.Controllers
     /// <response code="401">Unauthorized: Valid Admin JWT required.</response>
     /// <response code="404">Not Found: No doctor found with the provided ID.</response>
     /// <response code="409">Conflict: Doctor cannot be deleted due to existing appointment records.</response>
-    [HttpDelete("{Id}")]
+    [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> DeleteDoctor(Guid Id)
+    public async Task<IActionResult> DeleteDoctor(Guid id)
     {
-      var exists = await _dataContext.Doctors.AnyAsync(d => d.Id == Id);
+      var exists = await _dataContext.Doctors.AnyAsync(d => d.Id == id);
       if (!exists)
         return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Doctor not found." });
 
-      var hasAppointments = await _dataContext.Appointments.AnyAsync(a => a.DoctorId == Id);
+      var hasAppointments = await _dataContext.Appointments.AnyAsync(a => a.DoctorId == id);
       if (hasAppointments)
         return Conflict(new ApiErrorDTO { StatusCode = 409, Message = "Deletion denied. This doctor has existing appointments." });
 
-      _dataContext.Doctors.Remove(new Doctor { Id = Id });
+      _dataContext.Doctors.Remove(new Doctor { Id = id });
 
       try
       {
