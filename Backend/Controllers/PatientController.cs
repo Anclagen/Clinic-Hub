@@ -48,7 +48,7 @@ namespace Backend.Controllers
     public async Task<IActionResult> GetPatients(
     [FromQuery] string? q,
     [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 20
+    [FromQuery] int pageSize = 100
     )
     {
       page = Math.Max(page, 1);

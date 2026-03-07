@@ -27,7 +27,7 @@ namespace Backend.Controllers
     /// <response code="200">Success: Returns the clinic</response>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponseDTO<ClinicResponseDTO>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetClinics([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetClinics([FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
       page = Math.Max(page, 1);
       pageSize = Math.Clamp(pageSize, 1, 100);
@@ -242,7 +242,7 @@ namespace Backend.Controllers
     public async Task<IActionResult> DeleteClinic(int id)
     {
       var clinic = await _dataContext.Clinics.FindAsync(id);
-      if (clinic is null) return NotFound();
+      if (clinic is null) return NotFound(new ApiErrorDTO { StatusCode = 404, Message = "Clinic not found." });
 
       var hasDoctors = await _dataContext.Doctors.AnyAsync(d => d.ClinicId == id);
       if (hasDoctors)

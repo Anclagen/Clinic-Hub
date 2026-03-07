@@ -46,7 +46,7 @@ public record UpdateDoctorDTO
 public record DoctorQueryDTO
 {
   public int Page { get; init; } = 1;
-  public int PageSize { get; init; } = 20;
+  public int PageSize { get; init; } = 100;
   public int? SpecialityId { get; set; }
   public int? ClinicId { get; set; }
 }
@@ -55,7 +55,7 @@ public record DoctorSearchQueryDTO
 {
   public string? Query { get; init; }
   public int Page { get; init; } = 1;
-  public int PageSize { get; init; } = 20;
+  public int PageSize { get; init; } = 100;
   public int? SpecialityId { get; set; }
   public int? ClinicId { get; set; }
 }

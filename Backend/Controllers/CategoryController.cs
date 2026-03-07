@@ -24,11 +24,11 @@ namespace Backend.Controllers
     /// Retrieves a paged list of all appointment categories.
     /// </summary>
     /// <param name="page">The page number (defaults to 1).</param>
-    /// <param name="pageSize">Items per page (max 100, defaults to 20).</param>
+    /// <param name="pageSize">Items per page (max 100, defaults to 100).</param>
     /// <response code="200">Returns a paged wrapper of categories.</response>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponseDTO<CategoryResponseDTO>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetCategories([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetCategories([FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
       page = Math.Max(page, 1);
       pageSize = Math.Clamp(pageSize, 1, 100);

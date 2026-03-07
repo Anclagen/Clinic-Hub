@@ -24,13 +24,13 @@ namespace Backend.Controllers
     /// Retrieves a paged list of all available medical specialities.
     /// </summary>
     /// <param name="page">The page number (defaults to 1).</param>
-    /// <param name="pageSize">Items per page (max 100, defaults to 20).</param>
+    /// <param name="pageSize">Items per page (max 100, defaults to 100).</param>
     /// <response code="200">Returns a paged wrapper of specialities.</response>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponseDTO<SpecialityResponseDTO>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSpecialities(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 100)
     {
       page = Math.Max(page, 1);
       pageSize = Math.Clamp(pageSize, 1, 100);
