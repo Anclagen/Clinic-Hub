@@ -46,13 +46,19 @@ export function EditBookingForm({ appointment, setAppointment }: EditBookingProp
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [bookingFetchFailed, setBookingFetchFailed] = useState(false);
 
-  const [form, setForm] = useState<FormState>({
-    categoryId: String(appointment.categoryId),
-    doctorId: appointment.doctorId,
-    appointmentStartAt: appointment.startAt,
+  const [form, setForm] = useState<FormState>(() => {
+    const startDate = parseISO(appointment.startAt);
+
+    return {
+      categoryId: String(appointment.categoryId),
+      doctorId: appointment.doctorId,
+      appointmentStartAt: startDate.toISOString(),
+    };
   });
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(parseISO(appointment.startAt));
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() =>
+    parseISO(appointment.startAt),
+  );
 
   const isLocked = useMemo(() => {
     const start = parseISO(appointment.startAt);
@@ -104,23 +110,27 @@ export function EditBookingForm({ appointment, setAppointment }: EditBookingProp
   useEffect(() => {
     if (!form.doctorId || !selectedDate) return;
 
+    const date = selectedDate;
+    const doctorId = form.doctorId;
+
     let active = true;
     async function loadBookings() {
       setLoadingBookings(true);
       setBookingFetchFailed(false);
+
       try {
-        const from = selectedDate.toISOString();
-        const toDate = new Date(selectedDate);
+        const from = date.toISOString();
+        const toDate = new Date(date);
         toDate.setHours(23, 59, 59, 999);
         const to = toDate.toISOString();
 
-        const result = await AppointmentsService.bookedTimes(form.doctorId, from, to);
+        const result = await AppointmentsService.bookedTimes(doctorId, from, to);
 
         if (active) {
           const filtered = (result ?? []).filter((b) => b.startAt !== appointment.startAt);
           setBookings(filtered);
         }
-      } catch (e) {
+      } catch {
         if (active) setBookingFetchFailed(true);
       } finally {
         if (active) setLoadingBookings(false);
