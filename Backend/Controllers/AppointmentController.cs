@@ -137,6 +137,7 @@ namespace Backend.Controllers
       var total = await query.CountAsync();
       var data = await query
           .OrderBy(d => d.StartAt)
+          .OrderByDescending(d => d.StartAt)
           .Skip((page - 1) * pageSize)
           .Take(pageSize)
           .Select(d => new AppointmentResponseDTO
@@ -179,21 +180,21 @@ namespace Backend.Controllers
     /// **Security:** /// Only the patient who owns the appointment can access this data. 
     /// If the appointment belongs to a different user, a 404 is returned to prevent resource enumeration.
     /// </remarks>
-    /// <param name="Id">The unique GUID of the appointment.</param>
+    /// <param name="id">The unique GUID of the appointment.</param>
     /// <response code="200">Returns the full appointment details.</response>
     /// <response code="401">Unauthorized: Valid JWT token is required.</response>
     /// <response code="404">Not Found: Appointment doesn't exist or doesn't belong to the authenticated user.</response>
-    [HttpGet("{Id}")]
+    [HttpGet("{id}")]
     [Authorize]
     [ProducesResponseType(typeof(AppointmentResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDTO), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<AppointmentResponseDTO>> GetAppointment(Guid Id)
+    public async Task<ActionResult<AppointmentResponseDTO>> GetAppointment(Guid id)
     {
       var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
       if (!Guid.TryParse(sub, out var patientId)) return Unauthorized();
 
       var appointment = await _dataContext.Appointments.AsNoTracking()
-          .Where(a => a.PatientId == patientId && a.Id == Id)
+          .Where(a => a.PatientId == patientId && a.Id == id)
           .Select(a => new AppointmentResponseDTO
           {
             Id = a.Id,
@@ -217,7 +218,7 @@ namespace Backend.Controllers
         return NotFound(new ApiErrorDTO
         {
           StatusCode = 404,
-          Message = $"Appointment with id {Id} was not found."
+          Message = $"Appointment with id {id} was not found."
         });
       }
       return Ok(appointment);
