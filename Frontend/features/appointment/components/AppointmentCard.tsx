@@ -48,9 +48,13 @@ export default function AppointmentCard({
         logout();
         router.push("/auth/login?expired=true");
         return;
+      } else if (isApiError(error) && error.status === 409) {
+        setAwaitingResponse(false);
+        setError(error.message);
+      } else {
+        setAwaitingResponse(false);
+        setError("An error occurred. Unable to cancel appointment.");
       }
-      setAwaitingResponse(false);
-      setError("An error occurred.");
     }
   };
 
