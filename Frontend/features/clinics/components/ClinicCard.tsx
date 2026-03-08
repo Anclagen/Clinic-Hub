@@ -1,24 +1,20 @@
 import Link from "next/link";
 import type { Clinic } from "@/api/services/clinicsService";
+import { useState } from "react";
 
 type ClinicCardProps = {
   clinic: Clinic;
 };
 
-function resolveClinicImageUrl(imageUrl?: string | null): string | null {
-  if (!imageUrl) return null;
-  if (
-    imageUrl.startsWith("http://") ||
-    imageUrl.startsWith("https://") ||
-    imageUrl.startsWith("/")
-  ) {
-    return imageUrl;
-  }
+function resolveClinicImageUrl(imageUrl?: string | null): string | undefined {
+  if (!imageUrl) return undefined;
   return imageUrl;
 }
 
 export function ClinicCard({ clinic }: ClinicCardProps) {
+  const [imgFailed, setImgFailed] = useState(false);
   const imageUrl = resolveClinicImageUrl(clinic.imageUrl);
+  const showImage = Boolean(imageUrl) && !imgFailed;
 
   return (
     <Link
@@ -26,19 +22,21 @@ export function ClinicCard({ clinic }: ClinicCardProps) {
       className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:border-primary/40 hover:shadow"
     >
       <div className="relative h-44 w-full overflow-hidden border-b border-border bg-background text-primary">
-        {imageUrl ? (
+        {showImage ? (
           <img
             src={imageUrl}
             alt={clinic.imageAlt ?? clinic.clinicName}
             className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
             loading="lazy"
+            onError={() => setImgFailed(true)}
           />
         ) : (
-          <div className="grid h-full w-full place-items-center bg-primary-soft">
-            <span className="text-2xl font-semibold">
-              {clinic.clinicName.slice(0, 2).toUpperCase()}
-            </span>
-          </div>
+          <img
+            src="/images/ui/clinic_placeholder.jpg"
+            alt={clinic.imageAlt ?? clinic.clinicName}
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+          />
         )}
       </div>
 

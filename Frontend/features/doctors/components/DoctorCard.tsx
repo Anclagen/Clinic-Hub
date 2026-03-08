@@ -38,7 +38,6 @@ export function DoctorCard({ doctor }: DoctorCardProps) {
               alt={`Dr. ${doctor.firstname} ${doctor.lastname}`}
               className="h-full w-full object-contain"
               loading="lazy"
-              onError={() => setImgFailed(true)}
             />
           )}
         </div>

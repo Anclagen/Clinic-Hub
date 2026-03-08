@@ -10,15 +10,8 @@ type ClinicDetailsProps = {
   clinicId: number;
 };
 
-function resolveClinicImageUrl(imageUrl?: string | null): string | null {
-  if (!imageUrl) return null;
-  if (
-    imageUrl.startsWith("http://") ||
-    imageUrl.startsWith("https://") ||
-    imageUrl.startsWith("/")
-  ) {
-    return imageUrl;
-  }
+function resolveClinicImageUrl(imageUrl?: string | null): string | undefined {
+  if (!imageUrl) return undefined;
   return imageUrl;
 }
 
@@ -26,6 +19,10 @@ export function ClinicDetails({ clinicId }: ClinicDetailsProps) {
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imgFailed, setImgFailed] = useState(false);
+
+  const imageUrl = resolveClinicImageUrl(clinic?.imageUrl);
+  const showImage = !!imageUrl && !imgFailed;
 
   useEffect(() => {
     let active = true;
@@ -37,7 +34,9 @@ export function ClinicDetails({ clinicId }: ClinicDetailsProps) {
       try {
         const data = await ClinicsService.byId(clinicId);
         if (!active) return;
+
         setClinic(data);
+        setImgFailed(false);
       } catch (e) {
         if (!active) return;
         setError(e instanceof Error ? e.message : "Failed to load clinic.");
@@ -53,9 +52,7 @@ export function ClinicDetails({ clinicId }: ClinicDetailsProps) {
     };
   }, [clinicId]);
 
-  if (loading) {
-    return <ClinicDetailsSkeleton />;
-  }
+  if (loading) return <ClinicDetailsSkeleton />;
 
   if (error || !clinic) {
     return (
@@ -70,8 +67,6 @@ export function ClinicDetails({ clinicId }: ClinicDetailsProps) {
     );
   }
 
-  const imageUrl = resolveClinicImageUrl(clinic.imageUrl);
-
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       <Link href="/clinics" className="text-sm font-medium text-primary hover:text-primary-hover">
@@ -81,16 +76,21 @@ export function ClinicDetails({ clinicId }: ClinicDetailsProps) {
       <section className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-background text-primary">
-            {imageUrl ? (
+            {showImage ? (
               <img
                 src={imageUrl}
                 alt={clinic.imageAlt ?? clinic.clinicName}
-                className="h-full w-full object-contain p-1"
+                className="h-full w-full object-cover transition duration-300"
+                loading="lazy"
+                onError={() => setImgFailed(true)}
               />
             ) : (
-              <span className="text-lg font-semibold">
-                {clinic.clinicName.slice(0, 2).toUpperCase()}
-              </span>
+              <img
+                src="/images/ui/clinic_placeholder.jpg"
+                alt={clinic.imageAlt ?? clinic.clinicName}
+                className="h-full w-full object-cover transition duration-300"
+                loading="lazy"
+              />
             )}
           </div>
 
@@ -100,7 +100,6 @@ export function ClinicDetails({ clinicId }: ClinicDetailsProps) {
           </div>
         </div>
       </section>
-
       <DoctorsGrid query={{ clinicId }} title="Doctors at this clinic" />
     </div>
   );
