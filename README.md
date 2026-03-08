@@ -250,63 +250,7 @@ dotnet run -- --seed
 dotnet run
 ```
 
-9.
-
-Run the following to seed the database with test data:
-dotnet run -- --seed
-
-Run the following to start the server:
-dotnet run
-
-5. Install the required dependencies using the .NET CLI
-
-```bash
-dotnet restore
-```
-
-6. Apply database migrations to set up the database schema
-
-```bash
-dotnet ef database update
-```
-
-If you don't have the EF tools installed, you can do so with:
-
-```bash
-dotnet tool install --global dotnet-ef
-```
-
-If the migrations are not present, you can create them using:
-
-```bash
-dotnet ef migrations add Initial
-```
-
-Then run the update command again:
-
-```bash
-dotnet ef database update
-```
-
-7. Run the application
-
-```bash
-dotnet run
-```
-
-8. The application includes a seeding mechanism to populate the database with test data for better frontend development and testing. You can run the seeding process with the following command:
-
-```bash
-dotnet run -- --seed
-```
-
-9. Finally, start the server with:
-
-```bash
-dotnet run
-```
-
-10. The API is currently configured to run on `https://localhost:7071` and the Swagger documentation is available at `https://localhost:7071/doc` when running locally.
+9. The API is currently configured to run on `https://localhost:7071` and the Swagger documentation is available at `https://localhost:7071/doc` when running locally.
 
 ## ERD
 
