@@ -17,8 +17,6 @@ type DoctorCardProps = { doctor: Doctor };
 
 export function DoctorCard({ doctor }: DoctorCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
-
-  const initials = `${doctor.firstname[0] ?? ""}${doctor.lastname[0] ?? ""}`.toUpperCase();
   const imageUrl = resolveDoctorImageUrl(doctor.imageUrl);
   const showImage = Boolean(imageUrl) && !imgFailed;
 
@@ -35,9 +33,13 @@ export function DoctorCard({ doctor }: DoctorCardProps) {
               onError={() => setImgFailed(true)}
             />
           ) : (
-            <div className="grid h-full w-full place-items-center bg-primary-soft text-sm font-semibold text-primary">
-              {initials || "DR"}
-            </div>
+            <img
+              src="/images/ui/doctor_placeholder.jpg"
+              alt={`Dr. ${doctor.firstname} ${doctor.lastname}`}
+              className="h-full w-full object-contain"
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+            />
           )}
         </div>
 
