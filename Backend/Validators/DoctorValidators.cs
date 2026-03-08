@@ -23,6 +23,11 @@ public class CreateDoctorValidator : AbstractValidator<CreateDoctorDTO>
             .Must(v => string.IsNullOrWhiteSpace(v) || v.Trim().Length <= 50)
             .WithMessage("Lastname must be 50 characters or fewer.");
 
+        RuleFor(x => x.ImageUrl)
+            .MaximumLength(500)
+            .Must(LinkMustBeAtLeastHalfValid).WithMessage("ImageUrl must be a valid absolute URL.")
+            .When(x => !string.IsNullOrEmpty(x.ImageUrl));
+
         RuleFor(x => x.SpecialityId)
             .MustAsync(async (id, cancellation) => await _db.Specialities.AnyAsync(s => s.Id == id))
             .WithMessage("Speciality does not exist.");
@@ -30,6 +35,13 @@ public class CreateDoctorValidator : AbstractValidator<CreateDoctorDTO>
         RuleFor(x => x.ClinicId)
             .MustAsync(async (id, cancellation) => await _db.Clinics.AnyAsync(c => c.Id == id))
             .WithMessage("Clinic does not exist.");
+    }
+
+    private bool LinkMustBeAtLeastHalfValid(string? link)
+    {
+        if (string.IsNullOrWhiteSpace(link)) return true;
+        return Uri.TryCreate(link, UriKind.Absolute, out var outUri)
+               && (outUri.Scheme == Uri.UriSchemeHttp || outUri.Scheme == Uri.UriSchemeHttps);
     }
 }
 
@@ -58,5 +70,17 @@ public class UpdateDoctorValidator : AbstractValidator<UpdateDoctorDTO>
             .MustAsync(async (id, cancellation) => await _db.Clinics.AnyAsync(c => c.Id == id))
             .When(x => x.ClinicId.HasValue)
             .WithMessage("The specified Clinic does not exist.");
+
+        RuleFor(x => x.ImageUrl)
+            .MaximumLength(500)
+            .Must(LinkMustBeAtLeastHalfValid).WithMessage("ImageUrl must be a valid absolute URL.")
+            .When(x => !string.IsNullOrEmpty(x.ImageUrl));
+    }
+
+    private bool LinkMustBeAtLeastHalfValid(string? link)
+    {
+        if (string.IsNullOrWhiteSpace(link)) return true;
+        return Uri.TryCreate(link, UriKind.Absolute, out var outUri)
+               && (outUri.Scheme == Uri.UriSchemeHttp || outUri.Scheme == Uri.UriSchemeHttps);
     }
 }
