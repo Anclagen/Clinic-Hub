@@ -1,4 +1,4 @@
-import type { Pagination } from "@/api/services/doctorsService";
+import type { Pagination } from "@/api/apiTypes";
 
 type PaginationControlsProps = {
   pagination: Pagination;
@@ -6,7 +6,11 @@ type PaginationControlsProps = {
   onPageChange: (page: number) => void;
 };
 
-export function PaginationControls({ pagination, disabled = false, onPageChange }: PaginationControlsProps) {
+export function PaginationControls({
+  pagination,
+  disabled = false,
+  onPageChange,
+}: PaginationControlsProps) {
   if (pagination.totalPages <= 1) return null;
 
   const canGoPrev = pagination.page > 1 && !disabled;
